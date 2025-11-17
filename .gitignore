@@ -1,0 +1,155 @@
+# =========================
+# Flutter / Dart
+# =========================
+.dart_tool/
+.packages
+.pub/
+.flutter-plugins
+.flutter-plugins-dependencies
+.generated/
+.flutter-vision/
+build/
+# macOS desktop build output (if any)
+build/macos/
+# Linux desktop build
+build/linux/
+# Windows desktop build
+build/windows/
+
+# pubspec.lock: thường commit cho app, ignore for packages
+# Uncomment to ignore if this repo is a package/library:
+# pubspec.lock
+
+# =========================
+# Android (Flutter) / Gradle
+# =========================
+**/android/.gradle/
+**/android/.idea/
+**/android/local.properties
+**/android/key.properties
+**/android/*.keystore
+**/android/*.jks
+**/android/app/build/
+**/android/build/
+.gradle/
+caches/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Keystore / signing
+*.jks
+*.keystore
+key.properties
+
+# NDK / native
+.externalNativeBuild/
+.cxx/
+obj/
+*.so
+
+# =========================
+# iOS (Flutter)
+# =========================
+**/ios/Pods/
+**/ios/Flutter/Flutter.framework
+**/ios/Runner.xcworkspace/
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/Runner/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Podfile.lock
+*.xcworkspace
+*.xcuserstate
+DerivedData/
+# CocoaPods
+Pods/
+# Xcode
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# =========================
+# ASP.NET Core / .NET
+# =========================
+# build outputs
+bin/
+obj/
+**/bin/
+**/obj/
+project.lock.json
+project.fragment.lock.json
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+# Publish / artifacts
+publish/
+artifacts/
+*.nupkg
+
+# appsettings and secrets
+appsettings.*.json
+secrets.json
+.env
+.env.* 
+
+# Certificates / keys
+*.pfx
+*.key
+*.cer
+
+# Test results / coverage
+TestResults/
+coverage/
+
+# =========================
+# IDEs / Editors / OS
+# =========================
+# Android Studio / IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
+/.idea/workspace.xml
+/.idea/libraries
+/.idea/modules.xml
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# Logs
+*.log
+
+# Packaging / archives
+*.zip
+*.tar.gz
+
+# Binaries
+*.exe
+*.dll
+*.class
+*.jar
+
+# Node (if frontend exists)
+node_modules/
+
+# Firebase / Google Services (optional - decide per team)
+# google-services.json            # Uncomment to ignore (if you keep config private)
+# GoogleService-Info.plist       # Uncomment to ignore (iOS Firebase config)
+
+# Mapping / crashlytics (optional)
+mapping.txt
+crashlytics.properties
+fabric.properties
+captures/
+output.json

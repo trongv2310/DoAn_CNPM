@@ -1,0 +1,55 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../models/sach.dart';
+import '../models/user.dart';
+
+class ApiService {
+  // LƯU Ý: Kiểm tra kỹ PORT này.
+  // Nếu bạn chạy Backend thấy hiện "Listening on ...:5008" thì đúng.
+  // Nếu thấy 5000 hay số khác, hãy sửa lại số 5008 bên dưới.
+  static const String baseUrl = "http://10.0.2.2:5008/api";
+
+  // 1. ĐĂNG NHẬP
+  Future<User?> login(String username, String password) async {
+    final url = Uri.parse('$baseUrl/Auth/login');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "Username": username, // SỬA LỖI: Viết hoa chữ U để khớp với AuthController.cs
+          "Password": password  // SỬA LỖI: Viết hoa chữ P
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        print("Login thành công: ${response.body}");
+        return User.fromJson(jsonDecode(response.body));
+      } else {
+        print("Login thất bại: ${response.statusCode} - ${response.body}");
+        return null;
+      }
+    } catch (e) {
+      print("Lỗi kết nối đăng nhập: $e");
+      return null;
+    }
+  }
+
+  // 2. LẤY SÁCH
+  Future<List<Sach>> fetchSaches() async {
+    final url = Uri.parse('$baseUrl/Sach');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((e) => Sach.fromJson(e)).toList();
+      } else {
+        print("Lỗi lấy sách: ${response.statusCode}");
+        return [];
+      }
+    } catch (e) {
+      print("Exception lấy sách: $e");
+      return [];
+    }
+  }
+}
