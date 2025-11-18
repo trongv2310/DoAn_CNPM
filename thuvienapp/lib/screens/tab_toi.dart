@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart'; // Để làm chức năng đăng xuất
+import '../models/user.dart';
 
 class TabToi extends StatelessWidget {
+  final User user;
+  const TabToi({super.key, required this.user});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -12,8 +15,14 @@ class TabToi extends StatelessWidget {
             // Avatar
             CircleAvatar(radius: 50, backgroundColor: Colors.blue[100], child: Icon(Icons.person, size: 50, color: Colors.blue)),
             SizedBox(height: 10),
-            Text("Độc Giả: Nguyễn Văn A", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            Text("TK: sv01", style: TextStyle(color: Colors.grey)),
+            Text(
+                user.hoVaTen, // Hiển thị Họ và Tên thật
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
+            ),
+            Text(
+                "TK: ${user.tenDangNhap}", // Hiển thị Tên đăng nhập thật
+                style: const TextStyle(color: Colors.grey)
+            ),
             SizedBox(height: 30),
 
             // Các mục menu

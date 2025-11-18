@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import '../models/sach.dart';       // Dùng model Sach thật
-import '../providers/api_service.dart'; // Dùng ApiService thật
+import '../models/sach.dart';
+import '../models/user.dart'; // 1. Import User
+import '../providers/api_service.dart';
 import '../widgets/book_section.dart';
 import 'borrowed_books_screen.dart';
 import 'tab_toi.dart';
-import 'tab_tusach.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final User user;
+
+  const HomeScreen({super.key, required this.user});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -111,9 +113,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Danh sách các màn hình tương ứng với BottomNavigationBar
     final List<Widget> widgetOptions = <Widget>[
-      TabTuSach(), // Index 0: Tủ Sách
+      const BorrowedBooksScreen(), // Index 0: Tủ Sách
       buildHomeTab(),              // Index 1: Truyện (Giao diện chính có API)
-      TabToi(), // Index 2: Tôi
+      TabToi(user: widget.user), // Index 2: Tôi
     ];
 
     return Scaffold(

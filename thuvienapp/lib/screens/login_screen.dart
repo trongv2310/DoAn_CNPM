@@ -31,10 +31,11 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => StoreKeeperHomeScreen(user: user)));
       } else {
         // Mặc định hoặc Độc giả về Home cũ
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen(user: user)));
       }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
