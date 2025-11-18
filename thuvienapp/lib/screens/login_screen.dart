@@ -26,13 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Xin chào ${user.hoVaTen}!")));
 
       // ĐIỀU HƯỚNG DỰA VÀO QUYỀN (MAQUYEN)
-      // 1: Admin, 2: Thủ thư, 3: Thủ kho, 4: Độc giả (Check lại DB để chắc chắn số)
-      if (user.maQuyen == 3) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => StoreKeeperHomeScreen(user: user)));
-      } else {
-        // Mặc định hoặc Độc giả về Home cũ
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen(user: user)));
-      }
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen(user: user)));
     }
   }
 

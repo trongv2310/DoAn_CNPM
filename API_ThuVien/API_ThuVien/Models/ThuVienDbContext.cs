@@ -80,7 +80,7 @@ public partial class ThuVienDbContext : DbContext
         {
             entity.HasKey(e => new { e.Mapn, e.Masach }).HasName("PK_CTPN");
 
-            entity.ToTable("CHITIETPHIEUNHAP");
+            entity.ToTable("CHITIETPHIEUNHAP", tb => tb.HasTrigger("TG_CAPNHATSLTONCUASACH_CTPN"));
 
             entity.Property(e => e.Mapn).HasColumnName("MAPN");
             entity.Property(e => e.Masach).HasColumnName("MASACH");
@@ -130,7 +130,7 @@ public partial class ThuVienDbContext : DbContext
         {
             entity.HasKey(e => new { e.Matl, e.Masach }).HasName("PK_CTTL");
 
-            entity.ToTable("CHITIETTHANHLY");
+            entity.ToTable("CHITIETTHANHLY", tb => tb.HasTrigger("TG_CAPNHATSLTON_THANHLY"));
 
             entity.Property(e => e.Matl).HasColumnName("MATL");
             entity.Property(e => e.Masach).HasColumnName("MASACH");

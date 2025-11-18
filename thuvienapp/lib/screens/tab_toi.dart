@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart'; // Để làm chức năng đăng xuất
 import '../models/user.dart';
+import 'storekeeper/import_goods_screen.dart';
+import 'storekeeper/liquidation_screen.dart';
+import 'storekeeper/inventory_check_screen.dart';
 
 class TabToi extends StatelessWidget {
   final User user;
@@ -24,6 +27,24 @@ class TabToi extends StatelessWidget {
                 style: const TextStyle(color: Colors.grey)
             ),
             SizedBox(height: 30),
+            // === PHẦN RIÊNG CHO THỦ KHO (MaQuyen = 3) ===
+            if (user.maQuyen == 3) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 16, top: 10, bottom: 5),
+                child: Align(alignment: Alignment.centerLeft, child: Text("QUẢN LÝ KHO", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange))),
+              ),
+              _buildStoreKeeperItem(context, Icons.add_box, "Nhập Hàng Mới", Colors.green, () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => ImportGoodsScreen(user: user)));
+              }),
+              _buildStoreKeeperItem(context, Icons.delete_sweep, "Thanh Lý Sách", Colors.red, () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => LiquidationScreen(user: user)));
+              }),
+              _buildStoreKeeperItem(context, Icons.inventory, "Kiểm Kê Kho (Xem tồn)", Colors.blue, () {
+                // Có thể tái sử dụng API lấy sách để hiển thị list có số lượng tồn
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryCheckScreen()));
+              }),
+              Divider(thickness: 5, color: Colors.grey[100]),
+            ],
 
             // Các mục menu
             _buildProfileItem(Icons.history, "Lịch sử mượn"),
@@ -41,6 +62,26 @@ class TabToi extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  String _getRoleName(int id) {
+    if(id == 1) return "Admin";
+    if(id == 2) return "Thủ thư";
+    if(id == 3) return "Thủ kho";
+    return "Độc giả";
+  }
+
+  Widget _buildStoreKeeperItem(BuildContext context, IconData icon, String title, Color color, VoidCallback onTap) {
+    return ListTile(
+      leading: Container(
+        padding: EdgeInsets.all(8),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, color: color),
+      ),
+      title: Text(title, style: TextStyle(fontWeight: FontWeight.w600)),
+      trailing: Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+      onTap: onTap,
     );
   }
 

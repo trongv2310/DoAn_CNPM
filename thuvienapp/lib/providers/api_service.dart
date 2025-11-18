@@ -82,4 +82,30 @@ class ApiService {
       return false;
     }
   }
+  // 4. CHỨC NĂNG THỦ KHO: Thanh Lý
+  Future<bool> thanhLySach(int maThuKho, List<Map<String, dynamic>> chiTiet) async {
+    final url = Uri.parse('$baseUrl/ThuKho/thanh-ly');
+    try {
+      final body = jsonEncode({
+        "MaThuKho": maThuKho,
+        "ChiTiet": chiTiet
+      });
+
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print("Lỗi thanh lý: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("Exception thanh lý: $e");
+      return false;
+    }
+  }
 }
