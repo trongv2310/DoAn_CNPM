@@ -52,4 +52,34 @@ class ApiService {
       return [];
     }
   }
+
+// 3. CHỨC NĂNG THỦ KHO: Nhập Hàng
+  Future<bool> nhapHang(int maThuKho, List<Map<String, dynamic>> chiTiet) async {
+    // Lỗi của bạn là do dòng dưới này không thấy biến baseUrl
+    final url = Uri.parse('$baseUrl/ThuKho/nhap-hang');
+    try {
+      final body = jsonEncode({
+        "MaThuKho": maThuKho,
+        "ChiTiet": chiTiet
+      });
+
+      print("Đang gửi nhập hàng: $body");
+
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print("Lỗi nhập hàng: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("Exception nhập hàng: $e");
+      return false;
+    }
+  }
 }

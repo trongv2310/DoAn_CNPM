@@ -47,7 +47,7 @@ namespace API_ThuVien.Controllers
 
             // 2. Tìm họ tên người dùng dựa trên quyền
             string hoVaTen = "Người dùng";
-
+            int entityId = 0;
             // Nếu là Độc giả (Mã quyền 4 - Dựa theo DB của bạn)
             if (user.Maquyen == 4)
             {
@@ -60,6 +60,12 @@ namespace API_ThuVien.Controllers
                 var tt = await _context.Thuthus.FirstOrDefaultAsync(t => t.Mataikhoan == user.Mataikhoan);
                 if (tt != null) hoVaTen = tt.Hovaten;
             }
+            //Nếu là Thủ kho (Mã quyền 3
+            else if (user.Maquyen == 3)
+            {
+                var tk = await _context.Thukhos.FirstOrDefaultAsync(k => k.Mataikhoan == user.Mataikhoan);
+                if (tk != null) { hoVaTen = tk.Hovaten; entityId = tk.Matk; }
+            }
             // Nếu là Admin (Mã quyền 1) hoặc Thủ kho (Mã quyền 3) - Tạm thời để tên mặc định hoặc thêm logic tìm bảng NhanVien nếu có
 
             // 3. Trả về kết quả JSON
@@ -68,7 +74,8 @@ namespace API_ThuVien.Controllers
                 maTaiKhoan = user.Mataikhoan,
                 tenDangNhap = user.Tendangnhap.Trim(),
                 hoVaTen = hoVaTen,
-                maQuyen = user.Maquyen
+                maQuyen = user.Maquyen,
+                entityId = entityId
             });
         }
     }
