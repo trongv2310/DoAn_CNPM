@@ -4,6 +4,9 @@ class Sach {
   final String? hinhanh;
   final double giamuon;
   final int soluongton;
+  final String? theLoai;
+  final String? tenTacGia;
+  final String? moTa;
 
   Sach({
     required this.masach,
@@ -11,17 +14,22 @@ class Sach {
     this.hinhanh,
     required this.giamuon,
     required this.soluongton,
+    this.theLoai,
+    this.tenTacGia,
+    this.moTa,
   });
 
   factory Sach.fromJson(Map<String, dynamic> json) {
-    // API .NET thường trả về JSON dạng camelCase (chữ cái đầu viết thường)
     return Sach(
       masach: json['masach'] ?? 0,
       tensach: json['tensach'] ?? "Sách chưa cập nhật tên",
       hinhanh: json['hinhanh'],
-      // Xử lý chuyển đổi an toàn sang double
       giamuon: (json['giamuon'] ?? 0).toDouble(),
       soluongton: json['soluongton'] ?? 0,
+      // Map đúng key từ Backend trả về ở Bước 1
+      theLoai: json['theloai'] ?? "Khác",
+      tenTacGia: json['tenTacGia'] ?? "Chưa rõ",
+      moTa: json['mota'] ?? "",
     );
   }
 }

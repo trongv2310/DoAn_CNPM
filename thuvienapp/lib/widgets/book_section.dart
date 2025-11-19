@@ -4,11 +4,13 @@ import '../models/sach.dart'; // Import model Sach của chúng ta
 class BookSection extends StatelessWidget {
   final String title;
   final List<Sach> books;
+  final VoidCallback? onSeeMore;
 
   const BookSection({
     Key? key,
     required this.title,
     required this.books,
+    this.onSeeMore,
   }) : super(key: key);
 
   @override

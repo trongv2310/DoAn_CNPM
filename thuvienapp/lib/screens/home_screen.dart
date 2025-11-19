@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/sach.dart';
-import '../models/user.dart'; // 1. Import User
+import '../models/user.dart';
 import '../providers/api_service.dart';
 import '../widgets/book_section.dart';
 import 'borrowed_books_screen.dart';
 import 'tab_toi.dart';
+import 'book_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final User user;
@@ -52,10 +53,89 @@ class _HomeScreenState extends State<HomeScreen> {
             // Lấy danh sách sách
             List<Sach> allBooks = snapshot.data ?? [];
 
-            // Chia danh sách thành 2 phần giả lập (vì API trả về 1 list chung)
-            // Ví dụ: 5 cuốn đầu cho phần "Khuyến Khích", phần còn lại cho "Mới"
+            // Chia danh sách thành 2 phần giả lập
             List<Sach> recommendedBooks = allBooks.take(5).toList();
             List<Sach> latestUpdates = allBooks.skip(5).toList();
+
+            // --- ĐỊNH NGHĨA CÁC HÀM CHỨC NĂNG Ở ĐÂY (BÊN TRONG KHỐI ELSE) ---
+            // Lý do: Để các hàm này có thể truy cập biến `allBooks` và `context`
+
+            // 1. Hàm xử lý Thể Loại
+            void showCategories() {
+              final categories = allBooks.map((e) => e.theLoai ?? "Khác").toSet().toList();
+              showModalBottomSheet(
+                context: context,
+                builder: (_) => ListView.builder(
+                  itemCount: categories.length,
+                  itemBuilder: (_, index) => ListTile(
+                    title: Text(categories[index]),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                    onTap: () {
+                      Navigator.pop(context); // Đóng menu
+                      // Lọc sách và chuyển màn hình
+                      final booksByCat = allBooks.where((b) => b.theLoai == categories[index]).toList();
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => BookListScreen(title: categories[index], books: booksByCat)));
+                    },
+                  ),
+                ),
+              );
+            }
+
+            // 2. Hàm xử lý Tác Giả
+            void showAuthors() {
+              final authors = allBooks.map((e) => e.tenTacGia ?? "Chưa rõ").toSet().toList();
+              showModalBottomSheet(
+                context: context,
+                builder: (_) => ListView.builder(
+                  itemCount: authors.length,
+                  itemBuilder: (_, index) => ListTile(
+                    leading: const Icon(Icons.person),
+                    title: Text(authors[index]),
+                    onTap: () {
+                      Navigator.pop(context);
+                      final booksByAuthor = allBooks.where((b) => b.tenTacGia == authors[index]).toList();
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => BookListScreen(title: authors[index], books: booksByAuthor)));
+                    },
+                  ),
+                ),
+              );
+            }
+
+            // 3. Hàm xử lý Bộ Lọc (Giá)
+            void showFilters() {
+              showModalBottomSheet(
+                context: context,
+                builder: (_) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.arrow_upward),
+                      title: const Text("Giá: Thấp đến Cao"),
+                      onTap: () {
+                        Navigator.pop(context);
+                        List<Sach> sorted = List.from(allBooks)..sort((a, b) => a.giamuon.compareTo(b.giamuon));
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => BookListScreen(title: "Giá tăng dần", books: sorted)));
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.arrow_downward),
+                      title: const Text("Giá: Cao đến Thấp"),
+                      onTap: () {
+                        Navigator.pop(context);
+                        List<Sach> sorted = List.from(allBooks)..sort((a, b) => b.giamuon.compareTo(a.giamuon));
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => BookListScreen(title: "Giá giảm dần", books: sorted)));
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // 4. Hàm xử lý Tương Tác
+            void showInteraction() {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tính năng đang phát triển")));
+            }
+            // ----------------------------------------------------------------
 
             return SingleChildScrollView(
               child: Column(
@@ -68,7 +148,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.grey[300],
                       borderRadius: BorderRadius.circular(10),
                       image: const DecorationImage(
-                        // Ảnh banner mẫu
                         image: NetworkImage('https://i.ibb.co/C031mGf/main-banner.jpg'),
                         fit: BoxFit.cover,
                       ),
@@ -78,29 +157,41 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 16),
 
-                  // --- Các nút danh mục (Category) ---
+                  // --- Các nút danh mục (Đã có hàm để gọi) ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildCategoryButton(Icons.list, 'Thể Loại'),
-                        _buildCategoryButton(Icons.tune, 'Bộ Lọc'),
-                        _buildCategoryButton(Icons.lightbulb_outlined, 'Tác Giả'),
-                        _buildCategoryButton(Icons.contact_support_outlined, 'Tương Tác'),
+                        _buildCategoryButton(Icons.list, 'Thể Loại', showCategories),
+                        _buildCategoryButton(Icons.tune, 'Bộ Lọc', showFilters),
+                        _buildCategoryButton(Icons.lightbulb_outlined, 'Tác Giả', showAuthors),
+                        _buildCategoryButton(Icons.contact_support_outlined, 'Tương Tác', showInteraction),
                       ],
                     ),
                   ),
 
                   const SizedBox(height: 24),
 
-                  // --- Section 1: Khuyến Khích Đọc (Dữ liệu thật) ---
-                  BookSection(title: 'KHUYẾN KHÍCH ĐỌC', books: recommendedBooks),
+                  // --- Section 1: Khuyến Khích Đọc ---
+                  BookSection(
+                    title: 'KHUYẾN KHÍCH ĐỌC',
+                    books: recommendedBooks,
+                    onSeeMore: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => BookListScreen(title: "Sách Khuyến Khích", books: recommendedBooks)));
+                    },
+                  ),
 
                   const SizedBox(height: 24),
 
-                  // --- Section 2: Truyện Mới Cập Nhật (Dữ liệu thật) ---
-                  BookSection(title: 'TRUYỆN MỚI CẬP NHẬT', books: latestUpdates),
+                  // --- Section 2: Truyện Mới ---
+                  BookSection(
+                    title: 'TRUYỆN MỚI CẬP NHẬT',
+                    books: latestUpdates,
+                    onSeeMore: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => BookListScreen(title: "Mới Cập Nhật", books: latestUpdates)));
+                    },
+                  ),
 
                   const SizedBox(height: 24),
                 ],
@@ -113,13 +204,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Danh sách các màn hình tương ứng với BottomNavigationBar
     final List<Widget> widgetOptions = <Widget>[
-      const BorrowedBooksScreen(), // Index 0: Tủ Sách
-      buildHomeTab(),              // Index 1: Truyện (Giao diện chính có API)
-      TabToi(user: widget.user), // Index 2: Tôi
+      const BorrowedBooksScreen(), // Index 0
+      buildHomeTab(),              // Index 1
+      TabToi(user: widget.user),   // Index 2
     ];
 
     return Scaffold(
-      // --- AppBar Giữ Nguyên Thiết Kế Của Bạn ---
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -159,11 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-
-      // --- Body thay đổi theo tab ---
       body: widgetOptions.elementAt(_selectedIndex),
-
-      // --- BottomNavigationBar ---
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.bookmarks_outlined), label: 'Tủ Sách'),
@@ -180,17 +266,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Widget nút danh mục nhỏ
-  Widget _buildCategoryButton(IconData icon, String label) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 25,
-          backgroundColor: Colors.blueAccent.withOpacity(0.1),
-          child: Icon(icon, color: Colors.blueAccent, size: 30),
-        ),
-        const SizedBox(height: 8),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
+  Widget _buildCategoryButton(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 25,
+            backgroundColor: Colors.blueAccent.withOpacity(0.1),
+            child: Icon(icon, color: Colors.blueAccent, size: 30),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
     );
   }
 }
