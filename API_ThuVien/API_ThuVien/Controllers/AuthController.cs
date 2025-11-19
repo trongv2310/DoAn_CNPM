@@ -78,5 +78,32 @@ namespace API_ThuVien.Controllers
                 entityId = entityId
             });
         }
+
+        // Model hứng dữ liệu đổi pass
+        public class ChangePasswordRequest
+        {
+            public int MaTaiKhoan { get; set; }
+            public string MatKhauCu { get; set; }
+            public string MatKhauMoi { get; set; }
+        }
+
+        // API: Đổi mật khẩu
+        [HttpPost("doi-mat-khau")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            var user = await _context.Taikhoans.FindAsync(request.MaTaiKhoan);
+            if (user == null) return NotFound("Tài khoản không tồn tại");
+
+            // Kiểm tra pass cũ (Cần Trim để xóa khoảng trắng thừa của SQL CHAR)
+            if (user.Matkhau.Trim() != request.MatKhauCu.Trim())
+            {
+                return BadRequest("Mật khẩu cũ không chính xác");
+            }
+
+            user.Matkhau = request.MatKhauMoi; // Nên mã hóa MD5/BCrypt ở thực tế
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Đổi mật khẩu thành công" });
+        }
     }
 }

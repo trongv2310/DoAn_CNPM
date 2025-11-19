@@ -123,4 +123,45 @@ class ApiService {
       return [];
     }
   }
+
+  // 6. Lấy thống kê báo cáo (Thủ kho)
+  Future<List<dynamic>> fetchBaoCaoTaiChinh(int nam) async {
+    final url = Uri.parse('$baseUrl/ThuKho/thong-ke/$nam');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return [];
+    } catch (e) {
+      print("Lỗi thống kê: $e");
+      return [];
+    }
+  }
+
+  // 7. Đổi mật khẩu (Chung)
+  Future<bool> doiMatKhau(int maTaiKhoan, String matKhauCu, String matKhauMoi) async {
+    final url = Uri.parse('$baseUrl/Auth/doi-mat-khau');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "MaTaiKhoan": maTaiKhoan,
+          "MatKhauCu": matKhauCu,
+          "MatKhauMoi": matKhauMoi
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print("Lỗi đổi pass: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("Exception đổi pass: $e");
+      return false;
+    }
+  }
 }

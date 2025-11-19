@@ -122,5 +122,46 @@ namespace API_ThuVien.Controllers
 
             return Ok(list);
         }
+
+        // --- API MỚI: THỐNG KÊ TÀI CHÍNH (BÁO CÁO) ---
+        [HttpGet("thong-ke/{nam}")]
+        public async Task<IActionResult> GetThongKeTaiChinh(int nam)
+        {
+            // 1. Lấy dữ liệu Nhập hàng (Chi tiền)
+            var chiPhiNhap = await _context.Phieunhaps
+                .Where(p => p.Ngaynhap.Year == nam)
+                .GroupBy(p => p.Ngaynhap.Month)
+                .Select(g => new { Thang = g.Key, TongTien = g.Sum(x => x.Tongtien) })
+                .ToListAsync();
+
+            // 2. Lấy dữ liệu Thanh lý (Thu tiền)
+            var thuNhapThanhLy = await _context.Thanhlies
+                .Where(p => p.Ngaylap.Year == nam)
+                .GroupBy(p => p.Ngaylap.Month)
+                .Select(g => new { Thang = g.Key, TongTien = g.Sum(x => x.Tongtien) })
+                .ToListAsync();
+
+            // 3. Gộp dữ liệu cho 12 tháng
+            var ketQua = new List<object>();
+            for (int i = 1; i <= 12; i++)
+            {
+                decimal chi = chiPhiNhap.FirstOrDefault(x => x.Thang == i)?.TongTien ?? 0;
+                decimal thu = thuNhapThanhLy.FirstOrDefault(x => x.Thang == i)?.TongTien ?? 0;
+
+                // Chỉ thêm tháng nào có dữ liệu để báo cáo gọn hơn, hoặc trả về hết
+                if (chi > 0 || thu > 0)
+                {
+                    ketQua.Add(new
+                    {
+                        Thang = i,
+                        TongChi = chi,
+                        TongThu = thu,
+                        LoiNhuan = thu - chi
+                    });
+                }
+            }
+
+            return Ok(ketQua);
+        }
     }
 }

@@ -5,6 +5,8 @@ import 'storekeeper/import_goods_screen.dart';
 import 'storekeeper/liquidation_screen.dart';
 import 'storekeeper/inventory_check_screen.dart';
 import 'storekeeper/import_history_screen.dart';
+import 'storekeeper/report_screen.dart';
+import 'change_password_screen.dart';
 
 class TabToi extends StatelessWidget {
   final User user;
@@ -47,14 +49,25 @@ class TabToi extends StatelessWidget {
               _buildStoreKeeperItem(context, Icons.history, "Lịch Sử Nhập Hàng", Colors.purple, () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => ImportHistoryScreen(user: user)));
               }),
+              _buildStoreKeeperItem(context, Icons.bar_chart, "Lập Báo Cáo (Thu/Chi)", Colors.teal, () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportScreen()));
+              }),
               Divider(thickness: 5, color: Colors.grey[100]),
             ],
 
             // Các mục menu
             _buildProfileItem(Icons.history, "Lịch sử mượn"),
             _buildProfileItem(Icons.favorite, "Sách yêu thích"),
-
             _buildProfileItem(Icons.settings, "Cài đặt"),
+
+            ListTile(
+              leading: Icon(Icons.lock, color: Colors.blue),
+              title: Text("Đổi mật khẩu"),
+              trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => ChangePasswordScreen(user: user)));
+              },
+            ),
             Divider(),
             ListTile(
               leading: Icon(Icons.logout, color: Colors.red),
