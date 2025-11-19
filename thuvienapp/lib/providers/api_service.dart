@@ -108,4 +108,19 @@ class ApiService {
       return false;
     }
   }
+
+  // 5. Lấy lịch sử nhập hàng
+  Future<List<dynamic>> fetchLichSuNhap(int maThuKho) async {
+    final url = Uri.parse('$baseUrl/ThuKho/lich-su-nhap/$maThuKho');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return [];
+    } catch (e) {
+      print("Lỗi lấy lịch sử: $e");
+      return [];
+    }
+  }
 }

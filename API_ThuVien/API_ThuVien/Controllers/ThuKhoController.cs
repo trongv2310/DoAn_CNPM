@@ -96,5 +96,31 @@ namespace API_ThuVien.Controllers
 
             return Ok(new { Message = "Thanh lý thành công", MaPhieu = phieuTL.Matl });
         }
+
+        // API: Xem lịch sử nhập hàng của Thủ kho
+        [HttpGet("lich-su-nhap/{maThuKho}")]
+        public async Task<IActionResult> GetLichSuNhap(int maThuKho)
+        {
+            var list = await _context.Phieunhaps
+                .Where(p => p.Matk == maThuKho)
+                .OrderByDescending(p => p.Mapn) // Lấy phiếu mới nhất lên đầu
+                .Select(p => new
+                {
+                    p.Mapn,
+                    NgayNhap = p.Ngaynhap.ToString("dd/MM/yyyy"),
+                    p.Tongtien,
+                    // Lấy luôn chi tiết sách để hiển thị
+                    ChiTiet = p.Chitietphieunhaps.Select(ct => new
+                    {
+                        TenSach = ct.MasachNavigation.Tensach,
+                        ct.Soluong,
+                        ct.Gianhap,
+                        ThanhTien = ct.Thanhtien
+                    }).ToList()
+                })
+                .ToListAsync();
+
+            return Ok(list);
+        }
     }
 }

@@ -4,6 +4,7 @@ import '../models/user.dart';
 import 'storekeeper/import_goods_screen.dart';
 import 'storekeeper/liquidation_screen.dart';
 import 'storekeeper/inventory_check_screen.dart';
+import 'storekeeper/import_history_screen.dart';
 
 class TabToi extends StatelessWidget {
   final User user;
@@ -43,12 +44,16 @@ class TabToi extends StatelessWidget {
                 // Có thể tái sử dụng API lấy sách để hiển thị list có số lượng tồn
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryCheckScreen()));
               }),
+              _buildStoreKeeperItem(context, Icons.history, "Lịch Sử Nhập Hàng", Colors.purple, () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => ImportHistoryScreen(user: user)));
+              }),
               Divider(thickness: 5, color: Colors.grey[100]),
             ],
 
             // Các mục menu
             _buildProfileItem(Icons.history, "Lịch sử mượn"),
             _buildProfileItem(Icons.favorite, "Sách yêu thích"),
+
             _buildProfileItem(Icons.settings, "Cài đặt"),
             Divider(),
             ListTile(
