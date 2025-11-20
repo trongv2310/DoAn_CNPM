@@ -9,8 +9,8 @@ import '../providers/borrow_cart_provider.dart';
 import 'tab_tusach.dart';
 import 'tab_truyen.dart';
 import 'tab_toi.dart';
-import 'cart_screen.dart';
-import 'search_screen.dart'; // <--- 1. QUAN TRỌNG: Import màn hình tìm kiếm
+import 'reader/cart_screen.dart';
+import 'reader/search_screen.dart'; // <--- 1. QUAN TRỌNG: Import màn hình tìm kiếm
 
 class HomeScreen extends StatefulWidget {
   final User user;

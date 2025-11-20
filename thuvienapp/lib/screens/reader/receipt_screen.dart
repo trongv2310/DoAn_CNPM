@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/user.dart';
-import '../providers/borrow_cart_provider.dart';
+import '../../models/user.dart';
+import '../../providers/borrow_cart_provider.dart';
 
 class ReceiptScreen extends StatelessWidget {
   final User user;

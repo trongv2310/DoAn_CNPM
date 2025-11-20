@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async'; // Để dùng Timer (Debounce)
-import '../models/sach.dart';
-import '../providers/api_service.dart';
-import 'book_detail_screen.dart'; // Hoặc book_detail_screen.dart tùy tên file bạn
+import '../../models/sach.dart';
+import '../../providers/api_service.dart';
+import '../book_detail_screen.dart'; // Hoặc book_detail_screen.dart tùy tên file bạn
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
