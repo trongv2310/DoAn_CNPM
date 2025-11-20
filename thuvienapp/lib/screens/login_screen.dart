@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../providers/api_service.dart';
+import 'package:provider/provider.dart';     // 1. THÊM DÒNG NÀY
+import '../providers/user_provider.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -16,14 +18,22 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() async {
     setState(() => _isLoading = true);
 
-    // Gọi hàm login từ ApiService
     final user = await _apiService.login(_userController.text, _passController.text);
 
     setState(() => _isLoading = false);
 
     if (user != null) {
+      // --- THÊM DÒNG NÀY ---
+      // Lưu user vào provider để toàn bộ app có thể truy cập
+      Provider.of<UserProvider>(context, listen: false).setUser(user);
+      // --- HẾT PHẦN THÊM ---
+
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Xin chào ${user.hoVaTen}!")));
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
+      Navigator.pushReplacement(
+        context,
+        // SỬA DÒNG NÀY: Truyền biến user vào HomeScreen
+        MaterialPageRoute(builder: (_) => HomeScreen(user: user)),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Sai tài khoản hoặc mật khẩu!")));
     }

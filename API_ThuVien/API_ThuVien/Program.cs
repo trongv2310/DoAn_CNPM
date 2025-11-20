@@ -1,5 +1,7 @@
 ﻿using API_ThuVien.Models; // Đảm bảo tên này đúng với namespace project của bạn
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,8 +27,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+app.UseStaticFiles(new StaticFileOptions
+{
+    // Trỏ đến thư mục "images" nằm ở gốc dự án
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "images")),
+
+    // Đường dẫn trên URL sẽ là /images
+    RequestPath = "/images"
+});
 
 app.Run();

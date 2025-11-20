@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace API_ThuVien.Models;
 
 public partial class Phieumuon
 {
+    [Key] // Khóa chính
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Mapm { get; set; }
 
     public int Masv { get; set; }

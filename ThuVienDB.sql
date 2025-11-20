@@ -737,6 +737,22 @@ INSERT INTO CHITIETTHANHLY (MATL, MASACH, SOLUONG, DONGIA) VALUES
 (5, 5, 1, 90000);
 
 
+ALTER TABLE PHIEUMUON
+DROP CONSTRAINT CK_PM_TRANGTHAI;
+GO
+
+-- 2. Tạo ràng buộc mới có thêm 'Chờ duyệt' và 'Từ chối'
+ALTER TABLE PHIEUMUON
+ADD CONSTRAINT CK_PM_TRANGTHAI 
+CHECK (TRANGTHAI IN (N'Chờ duyệt', N'Đang mượn', N'Đã trả', N'Quá hạn', N'Thiếu', N'Quá hạn và Thiếu', N'Từ chối'));
+GO
+
+SELECT TOP 1 * FROM PHIEUMUON ORDER BY MAPM DESC;
+DROP TRIGGER IF EXISTS TG_CAPNHATSLTONCUASACH_CTPM;
+GO
+DROP TRIGGER IF EXISTS TG_TRANGTHAI_SACH;
+GO
+
 -- =====================================================================================================================
 -- ||                                          CẬP NHẬT DỮ LIỆU ĐỘNG                                                  ||
 -- =====================================================================================================================
