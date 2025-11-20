@@ -32,8 +32,11 @@ namespace API_ThuVien.Controllers
                     var pm = await _context.Phieumuons.FindAsync(request.MaPhieuMuon);
                     if (pm == null) return NotFound(new { message = "Không tìm thấy phiếu mượn" });
 
-                    // --- Logic cập nhật trạng thái để tính phạt (Giữ nguyên) ---
+                    // --- Logic cập nhật trạng thái để tính phạt ---
                     var ngayTraThucTe = DateOnly.FromDateTime(DateTime.Now);
+
+                    // Lưu ý: Nên lấy Hantra từ bảng ChiTietPhieuMuon nếu đã tách hạn trả riêng
+                    // Nhưng ở đây tạm thời dùng logic cũ của bạn để tránh lỗi biên dịch nếu chưa update model
                     bool isQuaHan = ngayTraThucTe > pm.Hantra;
 
                     if (isQuaHan)
@@ -75,6 +78,7 @@ namespace API_ThuVien.Controllers
                     _context.Chitietphieutras.Add(chiTietTra);
 
                     // Trigger tính tiền phạt sẽ chạy tại đây
+                    // Trigger TG_CAPNHATSLTONCUASACH_CTPT cũng sẽ chạy tại đây để cộng lại số lượng sách
                     await _context.SaveChangesAsync();
 
                     // 4. Cập nhật lại trạng thái cuối cùng (Nếu cần)
@@ -84,20 +88,9 @@ namespace API_ThuVien.Controllers
                         _context.Phieumuons.Update(pm);
                     }
 
-                    // 5. Cập nhật tồn kho sách
-                    var sach = await _context.Saches.FindAsync(request.MaSach);
-                    if (sach != null)
-                    {
-                        // A. CHỈ CẦN CỘNG SỐ LƯỢNG
-                        sach.Soluongton += (ctMuon.Soluong ?? 0);
-
-                        // B. KHÔNG CẦN SET 'Trangthai' THỦ CÔNG NỮA
-                        // Trigger TG_TRANGTHAI_SACH sẽ tự động làm việc này:
-                        // Nếu Soluongton > 0 -> Nó tự set thành 'Có sẵn'
-                        // Nếu Soluongton = 0 -> Nó tự set thành 'Đã hết'
-
-                        _context.Saches.Update(sach);
-                    }
+                    // --- ĐÃ XÓA: PHẦN CẬP NHẬT TỒN KHO SÁCH ---
+                    // Lý do: Trigger TG_CAPNHATSLTONCUASACH_CTPT trong SQL Server đã tự động cộng lại số lượng tồn
+                    // khi insert vào bảng CHITIETPHIEUTRA. Nếu để lại code C# này sẽ bị cộng 2 lần.
 
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();

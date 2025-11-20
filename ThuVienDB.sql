@@ -127,11 +127,12 @@ CREATE TABLE PHIEUMUON (
     NGAYLAPPHIEUMUON DATE NOT NULL,
     HANTRA DATE NOT NULL,
     TRANGTHAI NVARCHAR(30) NOT NULL DEFAULT N'Đang mượn',
+	SOLANGIAHAN INT DEFAULT 0,
 
     CONSTRAINT FK_PM_SV FOREIGN KEY (MASV) REFERENCES SINHVIEN(MASV),
     CONSTRAINT FK_PM_TT FOREIGN KEY (MATT) REFERENCES THUTHU(MATT),
     CONSTRAINT CK_PM_Ngay CHECK (NGAYLAPPHIEUMUON <= HANTRA),
-    CONSTRAINT CK_PM_TRANGTHAI CHECK (TRANGTHAI IN (N'Đang mượn', N'Đã trả', N'Quá hạn', N'Thiếu', N'Quá hạn và Thiếu'))
+    CONSTRAINT CK_PM_TRANGTHAI CHECK (TRANGTHAI IN (N'Đang mượn', N'Đã trả', N'Quá hạn', N'Thiếu', N'Quá hạn và Thiếu',N'Chờ duyệt',N'Từ chối'));
 );
 GO
 
@@ -142,6 +143,8 @@ CREATE TABLE CHITIETPHIEUMUON (
     MAPM INT NOT NULL,
     MASACH INT NOT NULL,
     SOLUONG INT DEFAULT 0 CHECK (SOLUONG >= 0),
+	HANTRA DATE,
+	SOLANGIAHAN INT DEFAULT 0,
 
     CONSTRAINT PK_CTPM PRIMARY KEY (MAPM, MASACH),
     CONSTRAINT FK_CTPM_PM FOREIGN KEY (MAPM) REFERENCES PHIEUMUON(MAPM),
@@ -282,50 +285,7 @@ GO
 -- ===============================================================
 -- 2. CẬP NHẬT SỐ LƯỢNG TỒN CỦA SÁCH KHI MƯỢN (PHIẾU MƯỢN)
 -- ===============================================================
-DROP TRIGGER IF EXISTS TG_CAPNHATSLTONCUASACH_CTPM;
-GO
-CREATE TRIGGER TG_CAPNHATSLTONCUASACH_CTPM
-ON CHITIETPHIEUMUON
-AFTER INSERT, UPDATE, DELETE
-AS
-BEGIN
-    SET NOCOUNT ON;
 
-    -- Kiểm tra không mượn vượt số lượng tồn
-    IF EXISTS (
-        SELECT 1
-        FROM inserted I
-        JOIN SACH S ON I.MASACH = S.MASACH
-        WHERE ISNULL(I.SOLUONG, 0) > ISNULL(S.SOLUONGTON, 0)
-    )
-    BEGIN
-        RAISERROR (N'Số lượng mượn vượt quá tồn kho!', 16, 1);
-        ROLLBACK TRANSACTION;
-        RETURN;
-    END;
-
-    -- Cập nhật tồn kho
-    UPDATE S
-    SET S.SOLUONGTON =
-        ISNULL(S.SOLUONGTON, 0)
-        - ISNULL(I.SL_MUON, 0)
-        + ISNULL(D.SL_TRA, 0)
-    FROM SACH S
-    LEFT JOIN (
-        SELECT MASACH, SUM(ISNULL(SOLUONG, 0)) AS SL_MUON
-        FROM inserted GROUP BY MASACH
-    ) I ON S.MASACH = I.MASACH
-    LEFT JOIN (
-        SELECT MASACH, SUM(ISNULL(SOLUONG, 0)) AS SL_TRA
-        FROM deleted GROUP BY MASACH
-    ) D ON S.MASACH = D.MASACH
-    WHERE S.MASACH IN (
-        SELECT MASACH FROM inserted
-        UNION
-        SELECT MASACH FROM deleted
-    );
-END;
-GO
 
 -- ===============================================================
 -- 3. CẬP NHẬT SỐ LƯỢNG TỒN CỦA SÁCH KHI TRẢ
@@ -742,249 +702,14 @@ DROP CONSTRAINT CK_PM_TRANGTHAI;
 GO
 
 -- 2. Tạo ràng buộc mới có thêm 'Chờ duyệt' và 'Từ chối'
-ALTER TABLE PHIEUMUON
-ADD CONSTRAINT CK_PM_TRANGTHAI 
-CHECK (TRANGTHAI IN (N'Chờ duyệt', N'Đang mượn', N'Đã trả', N'Quá hạn', N'Thiếu', N'Quá hạn và Thiếu', N'Từ chối'));
-GO
+--ALTER TABLE PHIEUMUON
+--ADD CONSTRAINT CK_PM_TRANGTHAI 
+--CHECK (TRANGTHAI IN (N'Chờ duyệt', N'Đang mượn', N'Đã trả', N'Quá hạn', N'Thiếu', N'Quá hạn và Thiếu', N'Từ chối'));
+--GO
 
-SELECT TOP 1 * FROM PHIEUMUON ORDER BY MAPM DESC;
-DROP TRIGGER IF EXISTS TG_CAPNHATSLTONCUASACH_CTPM;
-GO
-DROP TRIGGER IF EXISTS TG_TRANGTHAI_SACH;
-GO
+--DROP TRIGGER IF EXISTS TG_CAPNHATSLTONCUASACH_CTPM;
+--GO
 
--- =====================================================================================================================
--- ||                                          CẬP NHẬT DỮ LIỆU ĐỘNG                                                  ||
--- =====================================================================================================================
-
-
--- =====================================================================================================================
--- ||                                          PROCEDURE                                                              ||
--- =====================================================================================================================
-    --  Xem thông tin đăng nhập
-GO
-    CREATE PROC SP_XEMTT_DANGNHAP AS
-        BEGIN
-            SELECT MATT AS MATAIKHOAN,EMAIL,MATKHAU FROM THUTHU
-                                    UNION
-                                    SELECT MATK,EMAIL,MATKHAU FROM THUKHO
-                                    UNION
-                                    SELECT MASV,EMAIL,MATKHAU FROM SINHVIEN
-        end
-GO
-EXEC SP_XEMTT_DANGNHAP
-
-    -- ADMIN
-    -- 1.Quản lý thông tin user truy cập (mức view) : Thủ Thư , Thủ Kho ,Sinh Viên--> TẠO TÀI KHOẢN
-    --1 --> DỰA THEO VAI TRÒ (INPUT) TẠO MÃ TÀI KHOẢN VD : TTxxx , TKxxx ,SVxxx
-GO
-    CREATE PROC SP_PHATSINH_MATAIKHOAN_TAM @VAITRO NVARCHAR(30) , @MATK VARCHAR(10) OUTPUT AS
-        BEGIN
-            DECLARE @MA_2KYTU VARCHAR(5)							   
-            DECLARE @SO_SAUKYTU VARCHAR(8)
-            DECLARE @MATK_TAM VARCHAR(10)
-            SET @MA_2KYTU = CASE
-                WHEN @VAITRO=N'Thủ Thư' THEN 'TT'
-                WHEN @VAITRO=N'Thủ Kho' THEN 'TK'
-                ELSE 'SV'
-                END
-            WHILE 1=1
-                ---->KIỂM TRA MÃ TÀI KHOẢN KHÔNG TRÙNG ( TỈ LỆ 1: 100.000.000 RẤT HIẾM NHƯNG KO CÓ NGHĨA KO TRÙNG)
-                BEGIN
-                    SET @SO_SAUKYTU =CAST( ABS(CHECKSUM(NEWID())) % 100000000 AS VARCHAR(8))
-                    SET @MATK_TAM = @MA_2KYTU + @SO_SAUKYTU
-                    IF NOT EXISTS(SELECT 1 FROM
-                                 (
-                                    SELECT MATT AS MADANGNHAP,EMAIL,MATKHAU FROM THUTHU
-                                    UNION
-                                    SELECT MATK,EMAIL,MATKHAU FROM THUKHO
-                                    UNION
-                                    SELECT MASV,EMAIL,MATKHAU FROM SINHVIEN
-                                 ) AS THONGTINDANGNHAP WHERE THONGTINDANGNHAP.MADANGNHAP=@MATK_TAM
-                               )
-                        BEGIN
-                            SET @MATK=@MATK_TAM
-                            BREAK
-                        end
-                end
-        end
-GO
---thử dữ liệu
-DECLARE @MATK VARCHAR(15);
-EXEC SP_PHATSINH_MATAIKHOAN_TAM N'Thủ Thư', @MATK OUTPUT;
-SELECT @MATK AS MaDangNhap;
-
-
-    -- 2--> PHÁT SINH MẬT KHẨU TỰ ĐỘNG (8 CHỮ SỐ NGẪU NHIÊN ĐẢM BẢO KHÔNG TRÙNG)
-GO
-    CREATE PROC SP_PHATSINHMATKHAU @MATKHAU NVARCHAR(20) OUTPUT AS
-        BEGIN
-            DECLARE @DUYET NVARCHAR(20)
-            WHILE 1=1
-            BEGIN
-                SET @DUYET = CAST( ABS(CHECKSUM(NEWID())) % 100000000 AS VARCHAR(8))
-                -- CAST(ABS(CHECKSUM(NEWID())) AS VARCHAR(10))
-                IF NOT EXISTS(SELECT 1 FROM
-                                   (
-                                    SELECT MATT AS MADANGNHAP,EMAIL,MATKHAU FROM THUTHU
-                                    UNION
-                                    SELECT MATK,EMAIL,MATKHAU FROM THUKHO
-                                    UNION
-                                    SELECT MASV,EMAIL,MATKHAU FROM SINHVIEN
-                                   ) AS THONGTINDANGNHAP WHERE THONGTINDANGNHAP.MATKHAU=@MATKHAU
-                             )
-                BEGIN
-                    SET @MATKHAU=@DUYET
-                    BREAK
-                end
-            end
-        end
-GO
---thử dữ liệu
-DECLARE @MK NVARCHAR(20)
-EXEC SP_PHATSINHMATKHAU @MK OUTPUT
-SELECT @MK AS MK
-
-    -- 3 --> THÊM TÀI KHOẢN
-GO
-    CREATE PROC SP_THEMTAIKHOAN  @HOTEN NVARCHAR(30), @GIOITINH NVARCHAR(10) ,@NGSINH DATE,@SDT VARCHAR(15), @VAITRO NVARCHAR(20) AS
-        BEGIN
-            DECLARE @BANG VARCHAR(50)
-            DECLARE @EMAIL VARCHAR(50)
-            DECLARE @MATK VARCHAR(10)
-            DECLARE @MATKHAU NVARCHAR(20)
-            EXEC SP_PHATSINHMATKHAU @MATKHAU OUTPUT
-            EXEC SP_PHATSINH_MATAIKHOAN_TAM @VAITRO,@MATK OUTPUT
-            SET @BANG = CASE
-                WHEN SUBSTRING(@MATK,1,2) ='TT' THEN 'THUTHU'
-                WHEN SUBSTRING(@MATK ,1,2) ='TK' THEN 'THUKHO'
-                ELSE  'SINHVIEN'
-                END
-            SET @EMAIL = LOWER(REPLACE(@HOTEN, ' ', '') + '.' + @MATK + '@unilib.edu.vn')
-
-            IF @BANG = 'THUTHU'
-                BEGIN
-                    INSERT INTO THUTHU VALUES
-                    (@MATK,@HOTEN,@GIOITINH,@NGSINH,@SDT,@EMAIL,@MATKHAU)
-                end
-            ELSE IF @BANG='THUKHO'
-                BEGIN
-                    INSERT INTO THUKHO VALUES
-                    (@MATK,@HOTEN,@GIOITINH,@NGSINH,@SDT,@EMAIL,@MATKHAU)
-                end
-            ELSE
-                BEGIN
-                    INSERT INTO SINHVIEN VALUES
-                    (@MATK,@HOTEN,@GIOITINH,@NGSINH,@SDT,@EMAIL,@MATKHAU)
-                end
-        end
-GO
-EXEC SP_THEMTAIKHOAN N'VU DUY HUNG',N'Nam','2005-10-10','020202020',N'Thủ Kho'
-
-    ---------------- THỦ THƯ -----------------------
-    ---------------- THỦ KHO -----------------------
--- 1. Thủ kho nhập sách mới: tự động cập nhật tồn kho và tổng tiền phiếu nhập
-GO
-	CREATE PROCEDURE SP_NHAP_SACH
-		@MaPN VARCHAR(10),
-		@MaTK VARCHAR(10),
-		@MaSach VARCHAR(10),
-		@SoLuong INT,
-		@GiaNhap DECIMAL(10,2)
-	AS
-	BEGIN
-		
-		IF NOT EXISTS(SELECT 1 FROM dbo.PHIEUNHAP WHERE MAPN=@MaPN)
-		BEGIN		
-		    INSERT INTO PHIEUNHAP (MAPN, MATK, NGAYNHAP) VALUES
-             (@MaPN,@MaTK,GETDATE())
-		END
-		--
-
-		INSERT INTO CHITIETPHIEUNHAP (MAPN, MASACH, SOLUONG, GIANHAP)
-		VALUES (@MaPN, @MaSach, @SoLuong, @GiaNhap);
-	END;
-GO
--- THU DU LIEU :
-EXEC dbo.SP_NHAP_SACH @MaPN = 'PN11',     -- varchar(10)
-                      @MaTK = 'TK01',     -- varchar(10)
-                      @MaSach = 'S01',   -- varchar(10)
-                      @SoLuong = 10,   -- int
-                      @GiaNhap = 22000 -- decimal(10, 2)
-
--- 2. sinh viên mượn sách <--> thủ thư tạo Phiếu Mượn sách tương ứng với Sinh Viên , sau đó sinh viên hoàn thiện thông tin Chi Tiết Phiếu Mượn
-GO
-	CREATE PROC SP_TRAN_MUONSACH 
-		@MAPM VARCHAR(10),
-		@MATT VARCHAR(10),
-		@MASV VARCHAR(10),
-		@MASACH VARCHAR(10),
-		@NGAYLAP DATE ,
-		@HANTRA DATE,
-		@SL INT
-	AS
-	BEGIN
-		BEGIN  TRY
-			BEGIN TRANSACTION 
-			-- tạo phiếu mượn nếu chưa có
-			IF NOT EXISTS(SELECT 1 FROM dbo.PHIEUMUON WHERE MAPM=@MAPM)
-			BEGIN
-				INSERT INTO PHIEUMUON (MAPM,MASV,MATT,NGAYLAPPHIEUMUON,HANTRA) VALUES
-				(@MAPM,@MASV,@MATT,@NGAYLAP,@HANTRA)
-			END
-			-- điền thông tin phiếu mượn
-			INSERT INTO CHITIETPHIEUMUON VALUES
-			(@MAPM,@MASACH,@SL)
-			-- phiên thành công
-			COMMIT TRAN
-		END	TRY
-		BEGIN CATCH
-			ROLLBACK TRAN
-			PRINT 'PHIÊN MƯỢN SÁCH BỊ HỦY !!!'
-		END CATCH
-	END
-GO
-
--- 3. SINH VIÊN trả sách <--> THỦ THƯ tạo phiếu trả tương ứng với PHIẾU MƯỢN , sau đó SINH VIÊN hoàn thiện (chi tiết) phiếu trả tương ứng
-
-
-
-
--- =====================================================================================================================
--- ||                                          FUNCTION                                                               ||
--- =====================================================================================================================
-
-
-
-
-
--- =====================================================================================================================
--- ||                                          CURSOR                                                                 ||
--- =====================================================================================================================
-
--- =====================================================================================================================
--- ||                                          TRANSACTION                                                            ||
--- =====================================================================================================================
-
--- =====================================================================================================================
--- ||                                          CÁC TRUY VẤN THUẦN                                                     ||
--- =====================================================================================================================
-
-SELECT * FROM THUKHO
-SELECT * FROM SINHVIEN
-SELECT * FROM TACGIA
-SELECT * FROM NHAXUATBAN
-SELECT * FROM SACH
-SELECT * FROM PHIEUNHAP
-SELECT * FROM CHITIETPHIEUNHAP
-SELECT * FROM PHIEUMUON
-SELECT * FROM CHITIETPHIEUMUON
-SELECT * FROM PHIEUTRA
-SELECT * FROM CHITIETPHIEUTRA
-SELECT * FROM THANHLY
-SELECT * FROM CHITIETTHANHLY
-
-
-SELECT dbo.PHIEUMUON.MAPM,dbo.PHIEUTRA.MAPT,HANTRA,NGAYTRA
-FROM dbo.PHIEUMUON JOIN dbo.PHIEUTRA ON PHIEUTRA.MAPM = PHIEUMUON.MAPM
-JOIN dbo.CHITIETPHIEUTRA ON CHITIETPHIEUTRA.MAPT = PHIEUTRA.MAPT
+--ALTER TABLE CHITIETPHIEUMUON ADD HANTRA DATE;
+--ALTER TABLE CHITIETPHIEUMUON ADD SOLANGIAHAN INT DEFAULT 0;
+--GO

@@ -28,4 +28,5 @@ public partial class Phieumuon
     public virtual Thuthu MattNavigation { get; set; } = null!;
 
     public virtual ICollection<Phieutra> Phieutras { get; set; } = new List<Phieutra>();
+    public int? Solangiahan { get; set; }
 }

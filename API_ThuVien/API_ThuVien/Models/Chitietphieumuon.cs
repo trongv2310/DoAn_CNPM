@@ -10,8 +10,10 @@ public partial class Chitietphieumuon
     public int Masach { get; set; }
 
     public int? Soluong { get; set; }
-
+    public DateOnly? Hantra { get; set; }
+    public int? Solangiahan { get; set; }
     public virtual Phieumuon MapmNavigation { get; set; } = null!;
 
     public virtual Sach MasachNavigation { get; set; } = null!;
+
 }

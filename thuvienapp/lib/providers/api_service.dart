@@ -175,4 +175,27 @@ class ApiService {
       return [];
     }
   }
+  // 6. GIA HẠN SÁCH (CÓ CHỌN NGÀY + MÃ SÁCH)
+  Future<Map<String, dynamic>> giaHanSach(int maPhieuMuon, int maSach, DateTime ngayMoi) async {
+    final url = Uri.parse('$baseUrl/PhieuMuon/Extend/$maPhieuMuon');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "MaSach": maSach, // <-- Gửi thêm mã sách
+          "NgayHenTraMoi": ngayMoi.toIso8601String()
+        }),
+      );
+      // ... giữ nguyên phần xử lý response
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {"success": true, "message": data['message']};
+      } else {
+        return {"success": false, "message": data['message'] ?? "Lỗi khi gia hạn"};
+      }
+    } catch (e) {
+      return {"success": false, "message": "Lỗi kết nối máy chủ"};
+    }
+  }
 }
