@@ -238,6 +238,55 @@ CREATE TABLE CHITIETTHANHLY (
 );
 GO
 
+-- =========================================================
+-- 17) BẢNG HỎI ĐÁP (HOIDAP)
+-- =========================================================
+CREATE TABLE HOIDAP (
+    MAHOIDAP INT IDENTITY(1,1) PRIMARY KEY,
+    MASV INT NOT NULL,
+    CAUHOI NVARCHAR(MAX) NOT NULL,
+    TRALOI NVARCHAR(MAX),
+    MATT INT, -- Thủ thư trả lời
+    THOIGIANHOI DATETIME DEFAULT GETDATE(),
+    THOIGIANTRALOI DATETIME,
+    TRANGTHAI NVARCHAR(50) DEFAULT N'Chờ trả lời',
+
+    CONSTRAINT FK_HOIDAP_SV FOREIGN KEY (MASV) REFERENCES SINHVIEN(MASV),
+    CONSTRAINT FK_HOIDAP_TT FOREIGN KEY (MATT) REFERENCES THUTHU(MATT)
+);
+GO
+
+-- =========================================================
+-- 18) BẢNG GÓP Ý (GOPY)
+-- =========================================================
+CREATE TABLE GOPY (
+    MAGOPY INT IDENTITY(1,1) PRIMARY KEY,
+    MASV INT NOT NULL,
+    NOIDUNG NVARCHAR(MAX) NOT NULL,
+    LOAIGOPY NVARCHAR(50), -- Vd: Cơ sở vật chất, Thái độ phục vụ, Khác
+    THOIGIANGUI DATETIME DEFAULT GETDATE(),
+    TRANGTHAI NVARCHAR(50) DEFAULT N'Mới tiếp nhận',
+
+    CONSTRAINT FK_GOPY_SV FOREIGN KEY (MASV) REFERENCES SINHVIEN(MASV)
+);
+GO
+
+-- =========================================================
+-- 19) BẢNG ĐÁNH GIÁ SÁCH (DANHGIASACH)
+-- =========================================================
+CREATE TABLE DANHGIASACH (
+    MADANHGIA INT IDENTITY(1,1) PRIMARY KEY,
+    MASACH INT NOT NULL,
+    MASV INT NOT NULL,
+    DIEM INT CHECK (DIEM >= 1 AND DIEM <= 5),
+    NHANXET NVARCHAR(MAX),
+    THOIGIAN DATETIME DEFAULT GETDATE(),
+
+    CONSTRAINT FK_DGS_SACH FOREIGN KEY (MASACH) REFERENCES SACH(MASACH),
+    CONSTRAINT FK_DGS_SV FOREIGN KEY (MASV) REFERENCES SINHVIEN(MASV)
+);
+GO
+
 
 -- =========================================================
 
@@ -735,6 +784,27 @@ INSERT INTO CHITIETTHANHLY (MATL, MASACH, SOLUONG, DONGIA) VALUES
 (3, 3, 1, 70000),
 (4, 4, 1, 80000),
 (5, 5, 1, 90000);
+
+-- =============================================
+-- 17) HỎI ĐÁP
+-- =============================================
+INSERT INTO HOIDAP (MASV, CAUHOI, TRANGTHAI) VALUES
+(1, N'Thư viện có mở cửa chủ nhật không?', N'Chờ trả lời'),
+(2, N'Làm sao để gia hạn sách online?', N'Chờ trả lời');
+
+-- =============================================
+-- 18) GÓP Ý
+-- =============================================
+INSERT INTO GOPY (MASV, NOIDUNG, LOAIGOPY) VALUES
+(1, N'Wifi ở tầng 2 hơi yếu', N'Cơ sở vật chất'),
+(3, N'Nên có thêm máy nước nóng lạnh', N'Cơ sở vật chất');
+
+-- =============================================
+-- 19) ĐÁNH GIÁ SÁCH
+-- =============================================
+INSERT INTO DANHGIASACH (MASACH, MASV, DIEM, NHANXET) VALUES
+(1, 1, 5, N'Sách rất hay, bìa đẹp'),
+(3, 2, 4, N'Nội dung hấp dẫn nhưng dịch chưa mượt lắm');
 
 
 -- =====================================================================================================================
