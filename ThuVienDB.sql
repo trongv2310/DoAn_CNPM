@@ -238,6 +238,51 @@ CREATE TABLE CHITIETTHANHLY (
 );
 GO
 
+-- =========================================================
+-- 17) BẢNG HỎI ĐÁP
+-- =========================================================
+CREATE TABLE HOIDAP (
+    MAHOIDAP INT IDENTITY(1,1) PRIMARY KEY,
+    MASV INT NOT NULL,
+    CAUHOI NVARCHAR(500) NOT NULL,
+    TRALO NVARCHAR(1000),
+    NGAYHOI DATE NOT NULL,
+    TRANGTHAI NVARCHAR(30) NOT NULL DEFAULT N'Chờ trả lời' CHECK (TRANGTHAI IN (N'Chờ trả lời', N'Đã trả lời')),
+
+    CONSTRAINT FK_HOIDAP_SV FOREIGN KEY (MASV) REFERENCES SINHVIEN(MASV)
+);
+GO
+
+-- =========================================================
+-- 18) BẢNG GÓP Ý
+-- =========================================================
+CREATE TABLE GOPY (
+    MAGOPY INT IDENTITY(1,1) PRIMARY KEY,
+    MASV INT NOT NULL,
+    NOIDUNG NVARCHAR(1000) NOT NULL,
+    NGAYGOPY DATE NOT NULL,
+    TRANGTHAI NVARCHAR(30) NOT NULL DEFAULT N'Chưa xử lý' CHECK (TRANGTHAI IN (N'Chưa xử lý', N'Đã xử lý')),
+
+    CONSTRAINT FK_GOPY_SV FOREIGN KEY (MASV) REFERENCES SINHVIEN(MASV)
+);
+GO
+
+-- =========================================================
+-- 19) BẢNG ĐÁNH GIÁ SÁCH
+-- =========================================================
+CREATE TABLE DANHGIASACH (
+    MADANHGIA INT IDENTITY(1,1) PRIMARY KEY,
+    MASV INT NOT NULL,
+    MASACH INT NOT NULL,
+    DIEM INT NOT NULL CHECK (DIEM >= 1 AND DIEM <= 5),
+    BINHLUAN NVARCHAR(500),
+    NGAYDANHGIA DATE NOT NULL,
+
+    CONSTRAINT FK_DANHGIASACH_SV FOREIGN KEY (MASV) REFERENCES SINHVIEN(MASV),
+    CONSTRAINT FK_DANHGIASACH_SACH FOREIGN KEY (MASACH) REFERENCES SACH(MASACH)
+);
+GO
+
 
 -- =========================================================
 
@@ -736,6 +781,38 @@ INSERT INTO CHITIETTHANHLY (MATL, MASACH, SOLUONG, DONGIA) VALUES
 (4, 4, 1, 80000),
 (5, 5, 1, 90000);
 
+-- =============================================
+-- 17) HỎI ĐÁP
+-- =============================================
+INSERT INTO HOIDAP (MASV, CAUHOI, TRALO, NGAYHOI, TRANGTHAI) VALUES
+(1, N'Thư viện có mở cửa vào cuối tuần không?', N'Thư viện mở cửa từ thứ 2 đến chủ nhật, 8h sáng đến 5h chiều', '2025-01-15', N'Đã trả lời'),
+(2, N'Làm thế nào để gia hạn sách?', N'Bạn có thể gia hạn sách qua website hoặc liên hệ trực tiếp thủ thư', '2025-02-10', N'Đã trả lời'),
+(3, N'Số lượng sách tối đa được mượn một lần là bao nhiêu?', NULL, '2025-03-20', N'Chờ trả lời'),
+(1, N'Có dịch vụ photo tài liệu không?', N'Có, thư viện có dịch vụ photo với giá 500đ/trang', '2025-04-05', N'Đã trả lời'),
+(2, N'Làm sao để tìm sách theo chủ đề?', NULL, '2025-05-12', N'Chờ trả lời');
+
+-- =============================================
+-- 18) GÓP Ý
+-- =============================================
+INSERT INTO GOPY (MASV, NOIDUNG, NGAYGOPY, TRANGTHAI) VALUES
+(1, N'Nên mở rộng giờ làm việc của thư viện đến 8h tối', '2025-01-20', N'Đã xử lý'),
+(2, N'Bổ sung thêm sách về công nghệ thông tin', '2025-02-15', N'Chưa xử lý'),
+(3, N'Cần cải thiện hệ thống tìm kiếm sách', '2025-03-10', N'Đã xử lý'),
+(1, N'Thêm khu vực học nhóm yên tĩnh', '2025-04-08', N'Chưa xử lý'),
+(2, N'Cập nhật thêm sách mới về kinh tế', '2025-05-15', N'Chưa xử lý');
+
+-- =============================================
+-- 19) ĐÁNH GIÁ SÁCH
+-- =============================================
+INSERT INTO DANHGIASACH (MASV, MASACH, DIEM, BINHLUAN, NGAYDANHGIA) VALUES
+(1, 1, 5, N'Cuốn sách rất hay và hấp dẫn', '2025-01-12'),
+(2, 3, 4, N'Nội dung tốt nhưng hơi dài', '2025-02-18'),
+(3, 5, 5, N'Trinh thám kịch tính, không thể bỏ xuống', '2025-03-22'),
+(1, 7, 4, N'Câu chuyện cảm động về tuổi thơ', '2025-04-10'),
+(2, 9, 3, N'Hơi kinh dị nhưng viết hay', '2025-05-18'),
+(3, 2, 5, N'Phần 2 hay hơn phần 1', '2025-05-25'),
+(1, 4, 4, N'Văn phong độc đáo của Murakami', '2025-06-01');
+
 
 -- =====================================================================================================================
 -- ||                                          CẬP NHẬT DỮ LIỆU ĐỘNG                                                  ||
@@ -967,6 +1044,9 @@ SELECT * FROM PHIEUTRA
 SELECT * FROM CHITIETPHIEUTRA
 SELECT * FROM THANHLY
 SELECT * FROM CHITIETTHANHLY
+SELECT * FROM HOIDAP
+SELECT * FROM GOPY
+SELECT * FROM DANHGIASACH
 
 
 SELECT dbo.PHIEUMUON.MAPM,dbo.PHIEUTRA.MAPT,HANTRA,NGAYTRA
