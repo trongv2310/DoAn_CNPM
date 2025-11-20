@@ -164,4 +164,58 @@ class ApiService {
       return false;
     }
   }
+
+  // 8. TƯƠNG TÁC: Gửi câu hỏi
+  Future<bool> guiCauHoi(int maSV, String cauHoi) async {
+    final url = Uri.parse('$baseUrl/TuongTac/gui-cau-hoi');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"MaSinhVien": maSV, "CauHoi": cauHoi}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 9. TƯƠNG TÁC: Lấy lịch sử hỏi đáp
+  Future<List<dynamic>> layLichSuHoiDap(int maSV) async {
+    final url = Uri.parse('$baseUrl/TuongTac/lich-su-hoi-dap/$maSV');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) return json.decode(response.body);
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // 10. TƯƠNG TÁC: Gửi góp ý
+  Future<bool> guiGopY(int maSV, String noiDung, String loai) async {
+    final url = Uri.parse('$baseUrl/TuongTac/gui-gop-y');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"MaSinhVien": maSV, "NoiDung": noiDung, "LoaiGopY": loai}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 11. TƯƠNG TÁC: Xem đánh giá mới
+  Future<List<dynamic>> layDanhGiaMoi() async {
+    final url = Uri.parse('$baseUrl/TuongTac/danh-gia-moi');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) return json.decode(response.body);
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
 }

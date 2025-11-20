@@ -47,6 +47,12 @@ public partial class ThuVienDbContext : DbContext
 
     public virtual DbSet<Thuthu> Thuthus { get; set; }
 
+    public virtual DbSet<Hoidap> Hoidaps { get; set; }
+
+    public virtual DbSet<Gopy> Gopies { get; set; }
+
+    public virtual DbSet<Danhgiasach> Danhgiasaches { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Server=DESKTOP-HHFANUM;Database=ThuVienDB;Trusted_Connection=True;TrustServerCertificate=True;");
@@ -468,6 +474,59 @@ public partial class ThuVienDbContext : DbContext
                 .HasForeignKey<Thuthu>(d => d.Mataikhoan)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_THUTHU_TAIKHOAN");
+        });
+
+        modelBuilder.Entity<Hoidap>(entity =>
+        {
+            entity.ToTable("HOIDAP");
+            entity.HasKey(e => e.Mahoidap);
+            entity.Property(e => e.Mahoidap).HasColumnName("MAHOIDAP");
+            entity.Property(e => e.Masv).HasColumnName("MASV");
+            entity.Property(e => e.Cauhoi).HasColumnName("CAUHOI");
+            entity.Property(e => e.Traloi).HasColumnName("TRALOI");
+            entity.Property(e => e.Matt).HasColumnName("MATT");
+            entity.Property(e => e.Thoigianhoi).HasColumnName("THOIGIANHOI").HasColumnType("datetime");
+            entity.Property(e => e.Thoigiantraloi).HasColumnName("THOIGIANTRALOI").HasColumnType("datetime");
+            entity.Property(e => e.Trangthai).HasColumnName("TRANGTHAI").HasMaxLength(50);
+
+            entity.HasOne(d => d.MasvNavigation).WithMany()
+                .HasForeignKey(d => d.Masv).HasConstraintName("FK_HOIDAP_SV");
+
+            entity.HasOne(d => d.MattNavigation).WithMany()
+                .HasForeignKey(d => d.Matt).HasConstraintName("FK_HOIDAP_TT");
+        });
+
+        modelBuilder.Entity<Gopy>(entity =>
+        {
+            entity.ToTable("GOPY");
+            entity.HasKey(e => e.Magopy);
+            entity.Property(e => e.Magopy).HasColumnName("MAGOPY");
+            entity.Property(e => e.Masv).HasColumnName("MASV");
+            entity.Property(e => e.Noidung).HasColumnName("NOIDUNG");
+            entity.Property(e => e.Loaigopy).HasColumnName("LOAIGOPY").HasMaxLength(50);
+            entity.Property(e => e.Thoigiangui).HasColumnName("THOIGIANGUI").HasColumnType("datetime");
+            entity.Property(e => e.Trangthai).HasColumnName("TRANGTHAI").HasMaxLength(50);
+
+            entity.HasOne(d => d.MasvNavigation).WithMany()
+                .HasForeignKey(d => d.Masv).HasConstraintName("FK_GOPY_SV");
+        });
+
+        modelBuilder.Entity<Danhgiasach>(entity =>
+        {
+            entity.ToTable("DANHGIASACH");
+            entity.HasKey(e => e.Madanhgia);
+            entity.Property(e => e.Madanhgia).HasColumnName("MADANHGIA");
+            entity.Property(e => e.Masach).HasColumnName("MASACH");
+            entity.Property(e => e.Masv).HasColumnName("MASV");
+            entity.Property(e => e.Diem).HasColumnName("DIEM");
+            entity.Property(e => e.Nhanxet).HasColumnName("NHANXET");
+            entity.Property(e => e.Thoigian).HasColumnName("THOIGIAN").HasColumnType("datetime");
+
+            entity.HasOne(d => d.MasachNavigation).WithMany()
+                .HasForeignKey(d => d.Masach).HasConstraintName("FK_DGS_SACH");
+
+            entity.HasOne(d => d.MasvNavigation).WithMany()
+                .HasForeignKey(d => d.Masv).HasConstraintName("FK_DGS_SV");
         });
 
         OnModelCreatingPartial(modelBuilder);

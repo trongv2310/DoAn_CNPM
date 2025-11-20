@@ -6,6 +6,7 @@ import '../widgets/book_section.dart';
 import 'borrowed_books_screen.dart';
 import 'tab_toi.dart';
 import 'book_list_screen.dart';
+import 'interaction_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final User user;
@@ -131,9 +132,12 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             }
 
-            // 4. Hàm xử lý Tương Tác
+            /// 4. Hàm xử lý Tương Tác
             void showInteraction() {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tính năng đang phát triển")));
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => InteractionScreen(user: widget.user))
+              );
             }
             // ----------------------------------------------------------------
 
