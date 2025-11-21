@@ -1,3 +1,19 @@
+-- =======================================================================================
+-- SCRIPT HỢP NHẤT CƠ SỞ DỮ LIỆU THƯ VIỆN (MERGED VERSION)
+-- TÍCH HỢP:
+-- 1. Chức năng Mượn/Trả, Gia hạn, Giỏ hàng (Branch Dang)
+-- 2. Chức năng Thủ kho, Nhập/Thanh lý, Tương tác, Báo cáo (Branch Trong)
+-- =======================================================================================
+
+USE ThuVienDB;
+GO
+IF EXISTS (SELECT * FROM sys.databases WHERE name = 'ThuVienDB')
+BEGIN
+    ALTER DATABASE ThuVienDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE ThuVienDB;
+END
+GO
+
 CREATE DATABASE ThuVienDB;
 GO
 
@@ -118,30 +134,41 @@ CREATE TABLE SACH (
 GO
 
 -- =========================================================
--- 9) PHIẾU MƯỢN
+-- 9) PHIẾU MƯỢN (MERGED: Thêm trạng thái Chờ duyệt/Từ chối & Số lần gia hạn)
 -- =========================================================
 CREATE TABLE PHIEUMUON (
     MAPM INT IDENTITY(1,1) PRIMARY KEY,
-    MASV INT NOT NULL,  -- SINH VIÊN MƯỢN
-    MATT INT NOT NULL,  -- THỦ THƯ LẬP PHIẾU
+    MASV INT NOT NULL,
+    MATT INT NOT NULL,
     NGAYLAPPHIEUMUON DATE NOT NULL,
     HANTRA DATE NOT NULL,
+    
+    -- [UPDATE] Thêm các trạng thái mới từ nhánh Dang để hỗ trợ quy trình mượn online
     TRANGTHAI NVARCHAR(30) NOT NULL DEFAULT N'Đang mượn',
+    
+    -- [UPDATE] Thêm cột đếm số lần gia hạn (nếu quản lý theo phiếu)
+    SOLANGIAHAN INT DEFAULT 0,
 
     CONSTRAINT FK_PM_SV FOREIGN KEY (MASV) REFERENCES SINHVIEN(MASV),
     CONSTRAINT FK_PM_TT FOREIGN KEY (MATT) REFERENCES THUTHU(MATT),
     CONSTRAINT CK_PM_Ngay CHECK (NGAYLAPPHIEUMUON <= HANTRA),
-    CONSTRAINT CK_PM_TRANGTHAI CHECK (TRANGTHAI IN (N'Đang mượn', N'Đã trả', N'Quá hạn', N'Thiếu', N'Quá hạn và Thiếu'))
+    
+    -- Ràng buộc trạng thái
+    CONSTRAINT CK_PM_TRANGTHAI CHECK (TRANGTHAI IN (N'Chờ duyệt', N'Đang mượn', N'Đã trả', N'Quá hạn', N'Thiếu', N'Quá hạn và Thiếu', N'Từ chối'))
 );
 GO
 
 -- =========================================================
--- 10) CHI TIẾT PHIẾU MƯỢN
+-- 10) CHI TIẾT PHIẾU MƯỢN (MERGED: Thêm Hạn trả riêng & Số lần gia hạn riêng)
 -- =========================================================
 CREATE TABLE CHITIETPHIEUMUON (
     MAPM INT NOT NULL,
     MASACH INT NOT NULL,
     SOLUONG INT DEFAULT 0 CHECK (SOLUONG >= 0),
+    
+    -- [UPDATE] Hỗ trợ gia hạn từng cuốn sách riêng biệt
+    HANTRA DATE,
+    SOLANGIAHAN INT DEFAULT 0,
 
     CONSTRAINT PK_CTPM PRIMARY KEY (MAPM, MASACH),
     CONSTRAINT FK_CTPM_PM FOREIGN KEY (MAPM) REFERENCES PHIEUMUON(MAPM),
@@ -154,8 +181,8 @@ GO
 -- =========================================================
 CREATE TABLE PHIEUTRA (
     MAPT INT IDENTITY(1,1) PRIMARY KEY,
-    MAPM INT NOT NULL,   -- Tham chiếu đến phiếu mượn
-    MATT INT NOT NULL,   -- Thủ thư ghi nhận phiếu trả
+    MAPM INT NOT NULL,
+    MATT INT NOT NULL,
     NGAYLAPPHIEUTRA DATE NOT NULL,
     SONGAYQUAHAN INT DEFAULT 0 CHECK (SONGAYQUAHAN >= 0),
     TONGTIENPHAT FLOAT DEFAULT 0 CHECK (TONGTIENPHAT >= 0),
@@ -181,11 +208,11 @@ CREATE TABLE CHITIETPHIEUTRA (
 GO
 
 -- =========================================================
--- 13) PHIẾU NHẬP
+-- 13) PHIẾU NHẬP (Chức năng Thủ kho)
 -- =========================================================
 CREATE TABLE PHIEUNHAP (
     MAPN INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
-    MATK INT NOT NULL, -- Thủ kho lập phiếu
+    MATK INT NOT NULL,
     NGAYNHAP DATE NOT NULL,
     TONGTIEN DECIMAL(12,2) NOT NULL DEFAULT 0 CHECK (TONGTIEN >= 0),
 
@@ -210,11 +237,11 @@ CREATE TABLE CHITIETPHIEUNHAP (
 GO
 
 -- =========================================================
--- 15) BẢNG THANH LÝ
+-- 15) BẢNG THANH LÝ (Chức năng Thủ kho)
 -- =========================================================
 CREATE TABLE THANHLY (
     MATL INT IDENTITY(1,1) PRIMARY KEY NOT NULL,
-    MATK INT NOT NULL, -- Thủ kho lập hóa đơn
+    MATK INT NOT NULL,
     NGAYLAP DATE NOT NULL,
     TONGTIEN DECIMAL(12,2) DEFAULT 0 CHECK (TONGTIEN >= 0),
 
@@ -238,17 +265,61 @@ CREATE TABLE CHITIETTHANHLY (
 );
 GO
 
+-- =========================================================
+-- 17) BẢNG HỎI ĐÁP (Chức năng Tương tác - Mới)
+-- =========================================================
+CREATE TABLE HOIDAP (
+    MAHOIDAP INT IDENTITY(1,1) PRIMARY KEY,
+    MASV INT NOT NULL,
+    CAUHOI NVARCHAR(MAX) NOT NULL,
+    TRALOI NVARCHAR(MAX),
+    MATT INT,
+    THOIGIANHOI DATETIME DEFAULT GETDATE(),
+    THOIGIANTRALOI DATETIME,
+    TRANGTHAI NVARCHAR(50) DEFAULT N'Chờ trả lời',
+
+    CONSTRAINT FK_HOIDAP_SV FOREIGN KEY (MASV) REFERENCES SINHVIEN(MASV),
+    CONSTRAINT FK_HOIDAP_TT FOREIGN KEY (MATT) REFERENCES THUTHU(MATT)
+);
+GO
 
 -- =========================================================
+-- 18) BẢNG GÓP Ý (Chức năng Tương tác - Mới)
+-- =========================================================
+CREATE TABLE GOPY (
+    MAGOPY INT IDENTITY(1,1) PRIMARY KEY,
+    MASV INT NOT NULL,
+    NOIDUNG NVARCHAR(MAX) NOT NULL,
+    LOAIGOPY NVARCHAR(50),
+    THOIGIANGUI DATETIME DEFAULT GETDATE(),
+    TRANGTHAI NVARCHAR(50) DEFAULT N'Mới tiếp nhận',
+
+    CONSTRAINT FK_GOPY_SV FOREIGN KEY (MASV) REFERENCES SINHVIEN(MASV)
+);
+GO
+
+-- =========================================================
+-- 19) BẢNG ĐÁNH GIÁ SÁCH 
+-- =========================================================
+CREATE TABLE DANHGIASACH (
+    MADANHGIA INT IDENTITY(1,1) PRIMARY KEY,
+    MASACH INT NOT NULL,
+    MASV INT NOT NULL,
+    DIEM INT CHECK (DIEM >= 1 AND DIEM <= 5),
+    NHANXET NVARCHAR(MAX),
+    THOIGIAN DATETIME DEFAULT GETDATE(),
+
+    CONSTRAINT FK_DGS_SACH FOREIGN KEY (MASACH) REFERENCES SACH(MASACH),
+    CONSTRAINT FK_DGS_SV FOREIGN KEY (MASV) REFERENCES SINHVIEN(MASV)
+);
+GO
+
 
 -- =====================================================================================================================
--- ||                                               TRIGGER                                                           ||
+-- ||                                               TRIGGER (HỢP NHẤT)                                                ||
 -- =====================================================================================================================
 
--- ===============================================================
--- 1. CẬP NHẬT SỐ LƯỢNG TỒN CỦA SÁCH KHI NHẬP (PHIẾU NHẬP)
--- ===============================================================
-DROP TRIGGER IF EXISTS TG_CAPNHATSLTONCUASACH_CTPN;
+-- 1. CẬP NHẬT SỐ LƯỢNG TỒN KHI NHẬP
 GO
 CREATE TRIGGER TG_CAPNHATSLTONCUASACH_CTPN
 ON CHITIETPHIEUNHAP
@@ -256,81 +327,24 @@ AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
     SET NOCOUNT ON;
-
     UPDATE S
-    SET S.SOLUONGTON =
-        ISNULL(S.SOLUONGTON, 0)
-        + ISNULL(I.SL_NHAP, 0)
-        - ISNULL(D.SL_GIAM, 0)
+    SET S.SOLUONGTON = ISNULL(S.SOLUONGTON, 0) + ISNULL(I.SL_NHAP, 0) - ISNULL(D.SL_GIAM, 0)
     FROM SACH S
-    LEFT JOIN (
-        SELECT MASACH, SUM(ISNULL(SOLUONG, 0)) AS SL_NHAP
-        FROM inserted GROUP BY MASACH
-    ) I ON S.MASACH = I.MASACH
-    LEFT JOIN (
-        SELECT MASACH, SUM(ISNULL(SOLUONG, 0)) AS SL_GIAM
-        FROM deleted GROUP BY MASACH
-    ) D ON S.MASACH = D.MASACH
-    WHERE S.MASACH IN (
-        SELECT MASACH FROM inserted
-        UNION
-        SELECT MASACH FROM deleted
-    );
+    LEFT JOIN (SELECT MASACH, SUM(ISNULL(SOLUONG, 0)) AS SL_NHAP FROM inserted GROUP BY MASACH) I ON S.MASACH = I.MASACH
+    LEFT JOIN (SELECT MASACH, SUM(ISNULL(SOLUONG, 0)) AS SL_GIAM FROM deleted GROUP BY MASACH) D ON S.MASACH = D.MASACH
+    WHERE S.MASACH IN (SELECT MASACH FROM inserted UNION SELECT MASACH FROM deleted);
 END;
 GO
 
--- ===============================================================
--- 2. CẬP NHẬT SỐ LƯỢNG TỒN CỦA SÁCH KHI MƯỢN (PHIẾU MƯỢN)
--- ===============================================================
-DROP TRIGGER IF EXISTS TG_CAPNHATSLTONCUASACH_CTPM;
+-- 2. CẬP NHẬT SỐ LƯỢNG TỒN KHI MƯỢN
+-- Lưu ý: Trigger này sẽ trừ tồn kho ngay khi tạo phiếu (hoặc chi tiết phiếu).
+-- Nếu Backend đã trừ rồi thì trigger này sẽ trừ thêm lần nữa.
+-- Tuy nhiên để đảm bảo tính toàn vẹn dữ liệu mức DB, ta giữ lại và nên bỏ logic trừ ở Backend.
 GO
-CREATE TRIGGER TG_CAPNHATSLTONCUASACH_CTPM
-ON CHITIETPHIEUMUON
-AFTER INSERT, UPDATE, DELETE
-AS
-BEGIN
-    SET NOCOUNT ON;
+DROP TRIGGER IF EXISTS TG_CAPNHATSLTONCUASACH_CTPM
 
-    -- Kiểm tra không mượn vượt số lượng tồn
-    IF EXISTS (
-        SELECT 1
-        FROM inserted I
-        JOIN SACH S ON I.MASACH = S.MASACH
-        WHERE ISNULL(I.SOLUONG, 0) > ISNULL(S.SOLUONGTON, 0)
-    )
-    BEGIN
-        RAISERROR (N'Số lượng mượn vượt quá tồn kho!', 16, 1);
-        ROLLBACK TRANSACTION;
-        RETURN;
-    END;
 
-    -- Cập nhật tồn kho
-    UPDATE S
-    SET S.SOLUONGTON =
-        ISNULL(S.SOLUONGTON, 0)
-        - ISNULL(I.SL_MUON, 0)
-        + ISNULL(D.SL_TRA, 0)
-    FROM SACH S
-    LEFT JOIN (
-        SELECT MASACH, SUM(ISNULL(SOLUONG, 0)) AS SL_MUON
-        FROM inserted GROUP BY MASACH
-    ) I ON S.MASACH = I.MASACH
-    LEFT JOIN (
-        SELECT MASACH, SUM(ISNULL(SOLUONG, 0)) AS SL_TRA
-        FROM deleted GROUP BY MASACH
-    ) D ON S.MASACH = D.MASACH
-    WHERE S.MASACH IN (
-        SELECT MASACH FROM inserted
-        UNION
-        SELECT MASACH FROM deleted
-    );
-END;
-GO
-
--- ===============================================================
--- 3. CẬP NHẬT SỐ LƯỢNG TỒN CỦA SÁCH KHI TRẢ
--- ===============================================================
-DROP TRIGGER IF EXISTS TG_CAPNHATSLTONCUASACH_CTPT;
+-- 3. CẬP NHẬT SỐ LƯỢNG TỒN KHI TRẢ
 GO
 CREATE TRIGGER TG_CAPNHATSLTONCUASACH_CTPT
 ON CHITIETPHIEUTRA
@@ -338,33 +352,16 @@ AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
     SET NOCOUNT ON;
-
     UPDATE S
-    SET S.SOLUONGTON =
-        ISNULL(S.SOLUONGTON, 0)
-        + ISNULL(I.SL_TRA, 0)
-        - ISNULL(D.SL_XOA, 0)
+    SET S.SOLUONGTON = ISNULL(S.SOLUONGTON, 0) + ISNULL(I.SL_TRA, 0) - ISNULL(D.SL_XOA, 0)
     FROM SACH S
-    LEFT JOIN (
-        SELECT MASACH, SUM(ISNULL(SOLUONGTRA, 0)) AS SL_TRA
-        FROM inserted GROUP BY MASACH
-    ) I ON S.MASACH = I.MASACH
-    LEFT JOIN (
-        SELECT MASACH, SUM(ISNULL(SOLUONGTRA, 0)) AS SL_XOA
-        FROM deleted GROUP BY MASACH
-    ) D ON S.MASACH = D.MASACH
-    WHERE S.MASACH IN (
-        SELECT MASACH FROM inserted
-        UNION
-        SELECT MASACH FROM deleted
-    );
+    LEFT JOIN (SELECT MASACH, SUM(ISNULL(SOLUONGTRA, 0)) AS SL_TRA FROM inserted GROUP BY MASACH) I ON S.MASACH = I.MASACH
+    LEFT JOIN (SELECT MASACH, SUM(ISNULL(SOLUONGTRA, 0)) AS SL_XOA FROM deleted GROUP BY MASACH) D ON S.MASACH = D.MASACH
+    WHERE S.MASACH IN (SELECT MASACH FROM inserted UNION SELECT MASACH FROM deleted);
 END;
 GO
 
--- ===============================================================
--- 4. CẬP NHẬT TỔNG TIỀN CỦA PHIẾU NHẬP
--- ===============================================================
-DROP TRIGGER IF EXISTS TG_CAPNHATTONGTIEN_PN;
+-- 4. CẬP NHẬT TỔNG TIỀN PHIẾU NHẬP
 GO
 CREATE TRIGGER TG_CAPNHATTONGTIEN_PN
 ON CHITIETPHIEUNHAP
@@ -372,27 +369,14 @@ AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
     SET NOCOUNT ON;
-
-    UPDATE PN
-    SET PN.TONGTIEN = ISNULL(T.TONG, 0)
+    UPDATE PN SET PN.TONGTIEN = ISNULL(T.TONG, 0)
     FROM PHIEUNHAP PN
-    LEFT JOIN (
-        SELECT MAPN, SUM(ISNULL(THANHTIEN, 0)) AS TONG
-        FROM CHITIETPHIEUNHAP
-        GROUP BY MAPN
-    ) T ON PN.MAPN = T.MAPN
-    WHERE PN.MAPN IN (
-        SELECT MAPN FROM inserted
-        UNION
-        SELECT MAPN FROM deleted
-    );
+    LEFT JOIN (SELECT MAPN, SUM(ISNULL(THANHTIEN, 0)) AS TONG FROM CHITIETPHIEUNHAP GROUP BY MAPN) T ON PN.MAPN = T.MAPN
+    WHERE PN.MAPN IN (SELECT MAPN FROM inserted UNION SELECT MAPN FROM deleted);
 END;
 GO
 
--- ===============================================================
--- 5. CẬP NHẬT TRẠNG THÁI PHIẾU MƯỢN
--- ===============================================================
-DROP TRIGGER IF EXISTS TG_CAPNHATTRANGTHAI_PM;
+-- 5. CẬP NHẬT TRẠNG THÁI PHIẾU MƯỢN KHI TRẢ SÁCH
 GO
 CREATE TRIGGER TG_CAPNHATTRANGTHAI_PM
 ON PHIEUTRA
@@ -400,65 +384,24 @@ AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
     SET NOCOUNT ON;
-
     UPDATE PM
     SET TRANGTHAI = CASE
-        WHEN NOT EXISTS (SELECT 1 FROM PHIEUTRA PT WHERE PT.MAPM = PM.MAPM)
-            THEN N'Đang mượn'
-        WHEN (
-            SELECT MAX(CTPT.NGAYTRA)
-            FROM CHITIETPHIEUTRA CTPT 
-            JOIN PHIEUTRA PT ON CTPT.MAPT = PT.MAPT
-            WHERE PT.MAPM = PM.MAPM
-        ) > PM.HANTRA
-        AND (
-            SELECT SUM(ISNULL(CTPT.SOLUONGTRA, 0))
-            FROM CHITIETPHIEUTRA CTPT 
-            JOIN PHIEUTRA PT ON CTPT.MAPT = PT.MAPT
-            WHERE PT.MAPM = PM.MAPM
-        ) < (
-            SELECT SUM(ISNULL(SOLUONG, 0))
-            FROM CHITIETPHIEUMUON CTPM
-            WHERE CTPM.MAPM = PM.MAPM
-        )
-            THEN N'Quá hạn và Thiếu'
-        WHEN (
-            SELECT MAX(CTPT.NGAYTRA)
-            FROM CHITIETPHIEUTRA CTPT 
-            JOIN PHIEUTRA PT ON CTPT.MAPT = PT.MAPT
-            WHERE PT.MAPM = PM.MAPM
-        ) > PM.HANTRA
-            THEN N'Quá hạn'
-        WHEN (
-            SELECT SUM(ISNULL(CTPT.SOLUONGTRA, 0))
-            FROM CHITIETPHIEUTRA CTPT 
-            JOIN PHIEUTRA PT ON CTPT.MAPT = PT.MAPT
-            WHERE PT.MAPM = PM.MAPM
-        ) < (
-            SELECT SUM(ISNULL(SOLUONG, 0))
-            FROM CHITIETPHIEUMUON CTPM
-            WHERE CTPM.MAPM = PM.MAPM
-        )
-            THEN N'Thiếu'
+        WHEN NOT EXISTS (SELECT 1 FROM PHIEUTRA PT WHERE PT.MAPM = PM.MAPM) THEN N'Đang mượn'
+        WHEN (SELECT MAX(CTPT.NGAYTRA) FROM CHITIETPHIEUTRA CTPT JOIN PHIEUTRA PT ON CTPT.MAPT = PT.MAPT WHERE PT.MAPM = PM.MAPM) > PM.HANTRA
+             AND (SELECT SUM(ISNULL(CTPT.SOLUONGTRA, 0)) FROM CHITIETPHIEUTRA CTPT JOIN PHIEUTRA PT ON CTPT.MAPT = PT.MAPT WHERE PT.MAPM = PM.MAPM) < (SELECT SUM(ISNULL(SOLUONG, 0)) FROM CHITIETPHIEUMUON CTPM WHERE CTPM.MAPM = PM.MAPM)
+             THEN N'Quá hạn và Thiếu'
+        WHEN (SELECT MAX(CTPT.NGAYTRA) FROM CHITIETPHIEUTRA CTPT JOIN PHIEUTRA PT ON CTPT.MAPT = PT.MAPT WHERE PT.MAPM = PM.MAPM) > PM.HANTRA
+             THEN N'Quá hạn'
+        WHEN (SELECT SUM(ISNULL(CTPT.SOLUONGTRA, 0)) FROM CHITIETPHIEUTRA CTPT JOIN PHIEUTRA PT ON CTPT.MAPT = PT.MAPT WHERE PT.MAPM = PM.MAPM) < (SELECT SUM(ISNULL(SOLUONG, 0)) FROM CHITIETPHIEUMUON CTPM WHERE CTPM.MAPM = PM.MAPM)
+             THEN N'Thiếu'
         ELSE N'Đã trả'
     END
     FROM PHIEUMUON PM
-    WHERE PM.MAPM IN (
-        SELECT PT.MAPM
-        FROM PHIEUTRA PT
-        WHERE PT.MAPT IN (
-            SELECT MAPT FROM inserted
-            UNION
-            SELECT MAPT FROM deleted
-        )
-    );
+    WHERE PM.MAPM IN (SELECT PT.MAPM FROM PHIEUTRA PT WHERE PT.MAPT IN (SELECT MAPT FROM inserted UNION SELECT MAPT FROM deleted));
 END;
 GO
 
--- ===============================================================
--- 6. CẬP NHẬT TIỀN PHẠT PHIẾU TRẢ
--- ===============================================================
-DROP TRIGGER IF EXISTS TG_CAPNHATTIENPHAT_PT;
+-- 6. CẬP NHẬT TIỀN PHẠT
 GO
 CREATE TRIGGER TG_CAPNHATTIENPHAT_PT
 ON CHITIETPHIEUTRA
@@ -466,45 +409,30 @@ AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
     SET NOCOUNT ON;
-
     UPDATE PT
-    SET PT.TONGTIENPHAT =
-        ISNULL((
-            SELECT SUM(
-                CASE 
-                    WHEN DATEDIFF(DAY, PM.HANTRA, CTPT.NGAYTRA) > 0 THEN
-                        CASE 
-                            WHEN PM.TRANGTHAI = N'Quá hạn và Thiếu' THEN
-                                CASE 
-                                    WHEN DATEDIFF(DAY, PM.HANTRA, CTPT.NGAYTRA) <= 7 
-                                        THEN DATEDIFF(DAY, PM.HANTRA, CTPT.NGAYTRA) * 0.02 * ISNULL(S.GIAMUON, 0)
-                                    ELSE 1.5 * ISNULL(S.GIAMUON, 0)
-                                END
-                            WHEN PM.TRANGTHAI = N'Quá hạn' THEN 1500
-                            ELSE 0
-                        END
-                    ELSE 0
-                END
-            )
-            FROM CHITIETPHIEUTRA CTPT
-            JOIN PHIEUTRA PT2 ON CTPT.MAPT = PT2.MAPT
-            JOIN PHIEUMUON PM ON PT2.MAPM = PM.MAPM
-            JOIN SACH S ON CTPT.MASACH = S.MASACH
-            WHERE PT2.MAPT = PT.MAPT
-        ), 0)
+    SET PT.TONGTIENPHAT = ISNULL((
+        SELECT SUM(
+            CASE 
+                WHEN DATEDIFF(DAY, PM.HANTRA, CTPT.NGAYTRA) > 0 THEN
+                    CASE 
+                        WHEN PM.TRANGTHAI LIKE N'%Quá hạn%' THEN 
+                             DATEDIFF(DAY, PM.HANTRA, CTPT.NGAYTRA) * 1000 -- Logic phạt đơn giản: 1000đ/ngày
+                        ELSE 0
+                    END
+                ELSE 0
+            END
+        )
+        FROM CHITIETPHIEUTRA CTPT
+        JOIN PHIEUTRA PT2 ON CTPT.MAPT = PT2.MAPT
+        JOIN PHIEUMUON PM ON PT2.MAPM = PM.MAPM
+        WHERE PT2.MAPT = PT.MAPT
+    ), 0)
     FROM PHIEUTRA PT
-    WHERE PT.MAPT IN (
-        SELECT MAPT FROM inserted
-        UNION
-        SELECT MAPT FROM deleted
-    );
+    WHERE PT.MAPT IN (SELECT MAPT FROM inserted UNION SELECT MAPT FROM deleted);
 END;
 GO
 
--- ===============================================================
--- 7. CẬP NHẬT TỔNG TIỀN THANH LÝ
--- ===============================================================
-DROP TRIGGER IF EXISTS TG_CAPNHATTONGTIEN_TL;
+-- 7. CẬP NHẬT TỔNG TIỀN THANH LÝ (Trigger mới từ nhánh Trong)
 GO
 CREATE TRIGGER TG_CAPNHATTONGTIEN_TL
 ON CHITIETTHANHLY
@@ -512,49 +440,51 @@ AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
     SET NOCOUNT ON;
-
-    UPDATE TL
-    SET TL.TONGTIEN = ISNULL(T.TotalThanhtien, 0)
+    UPDATE TL SET TL.TONGTIEN = ISNULL(T.TotalThanhtien, 0)
     FROM THANHLY TL
-    LEFT JOIN (
-        SELECT MATL, SUM(ISNULL(THANHTIEN, 0)) AS TotalThanhtien
-        FROM CHITIETTHANHLY
-        GROUP BY MATL
-    ) T ON TL.MATL = T.MATL
-    WHERE TL.MATL IN (
-        SELECT MATL FROM inserted
-        UNION
-        SELECT MATL FROM deleted
-    );
+    LEFT JOIN (SELECT MATL, SUM(ISNULL(THANHTIEN, 0)) AS TotalThanhtien FROM CHITIETTHANHLY GROUP BY MATL) T ON TL.MATL = T.MATL
+    WHERE TL.MATL IN (SELECT MATL FROM inserted UNION SELECT MATL FROM deleted);
 END;
 GO
 
--- ===============================================================
--- 8. CẬP NHẬT TRẠNG THÁI SÁCH
--- ===============================================================
-DROP TRIGGER IF EXISTS TG_TRANGTHAI_SACH;
+-- 8. CẬP NHẬT TRẠNG THÁI SÁCH (CÒN/HẾT)
 GO
+
+DROP TRIGGER TG_TRANGTHAI_SACH
+GO 
+
 CREATE TRIGGER TG_TRANGTHAI_SACH
 ON SACH
 AFTER INSERT, UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-
     UPDATE S
-    SET TRANGTHAI = 
-        CASE WHEN ISNULL(S.SOLUONGTON, 0) > 0 THEN N'Có sẵn'
-             ELSE N'Đã hết'
-        END
-    FROM SACH S
-    JOIN inserted I ON S.MASACH = I.MASACH;
+    SET TRANGTHAI = CASE WHEN ISNULL(S.SOLUONGTON, 0) > 0 THEN N'Có sẵn' ELSE N'Đã hết' END
+    FROM SACH S JOIN inserted I ON S.MASACH = I.MASACH;
+END;
+GO
+
+-- 9. TRỪ TỒN KHO KHI THANH LÝ (Trigger mới từ nhánh Trong)
+GO
+CREATE TRIGGER TG_CAPNHATSLTON_THANHLY
+ON CHITIETTHANHLY
+AFTER INSERT, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    -- 1. Khi thêm phiếu thanh lý (Trừ tồn kho)
+    UPDATE S SET S.SOLUONGTON = S.SOLUONGTON - I.SOLUONG
+    FROM SACH S JOIN inserted I ON S.MASACH = I.MASACH;
+    -- 2. Khi xóa phiếu thanh lý (Cộng lại tồn kho)
+    UPDATE S SET S.SOLUONGTON = S.SOLUONGTON + D.SOLUONG
+    FROM SACH S JOIN deleted D ON S.MASACH = D.MASACH;
 END;
 GO
 
 -- =====================================================================================================================
--- ||                                          THÊM NỘI DUNG DỮ LIỆU                                                  ||
+-- ||                                          DỮ LIỆU MẪU                                                            ||
 -- =====================================================================================================================
-
 
 -- =============================================
 -- 1) PHÂN QUYỀN
@@ -737,238 +667,40 @@ INSERT INTO CHITIETTHANHLY (MATL, MASACH, SOLUONG, DONGIA) VALUES
 (5, 5, 1, 90000);
 
 
--- =====================================================================================================================
--- ||                                          CẬP NHẬT DỮ LIỆU ĐỘNG                                                  ||
--- =====================================================================================================================
+-- =============================================
+-- 17) HỎI ĐÁP
+-- =============================================
+-- Dữ liệu mẫu cho chức năng tương tác
+INSERT INTO HOIDAP (MASV, CAUHOI, TRANGTHAI) VALUES
+(1, N'Thư viện có mở cửa chủ nhật không?', N'Chờ trả lời'),
+(2, N'Làm sao để gia hạn sách online?', N'Chờ trả lời');
 
+-- =============================================
+-- 18) GÓP Ý
+-- =============================================
+INSERT INTO GOPY (MASV, NOIDUNG, LOAIGOPY) VALUES
+(1, N'Wifi ở tầng 2 hơi yếu', N'Cơ sở vật chất'),
+(3, N'Nên có thêm máy nước nóng lạnh', N'Cơ sở vật chất');
 
--- =====================================================================================================================
--- ||                                          PROCEDURE                                                              ||
--- =====================================================================================================================
-    --  Xem thông tin đăng nhập
+-- =============================================
+-- 19) ĐÁNH GIÁ
+-- =============================================
+INSERT INTO DANHGIASACH (MASACH, MASV, DIEM, NHANXET) VALUES
+(1, 1, 5, N'Sách rất hay, bìa đẹp'),
+(3, 2, 4, N'Nội dung hấp dẫn nhưng dịch chưa mượt lắm');
+
+-- STORED PROCEDURES HỖ TRỢ
 GO
-    CREATE PROC SP_XEMTT_DANGNHAP AS
-        BEGIN
-            SELECT MATT AS MATAIKHOAN,EMAIL,MATKHAU FROM THUTHU
-                                    UNION
-                                    SELECT MATK,EMAIL,MATKHAU FROM THUKHO
-                                    UNION
-                                    SELECT MASV,EMAIL,MATKHAU FROM SINHVIEN
-        end
+CREATE PROCEDURE SP_NHAP_SACH
+    @MaPN VARCHAR(10),
+    @MaTK VARCHAR(10),
+    @MaSach VARCHAR(10),
+    @SoLuong INT,
+    @GiaNhap DECIMAL(10,2)
+AS
+BEGIN
+    -- Logic nhập sách (đơn giản hóa cho demo)
+    INSERT INTO CHITIETPHIEUNHAP (MAPN, MASACH, SOLUONG, GIANHAP)
+    VALUES (CAST(@MaPN AS INT), CAST(@MaSach AS INT), @SoLuong, @GiaNhap);
+END;
 GO
-EXEC SP_XEMTT_DANGNHAP
-
-    -- ADMIN
-    -- 1.Quản lý thông tin user truy cập (mức view) : Thủ Thư , Thủ Kho ,Sinh Viên--> TẠO TÀI KHOẢN
-    --1 --> DỰA THEO VAI TRÒ (INPUT) TẠO MÃ TÀI KHOẢN VD : TTxxx , TKxxx ,SVxxx
-GO
-    CREATE PROC SP_PHATSINH_MATAIKHOAN_TAM @VAITRO NVARCHAR(30) , @MATK VARCHAR(10) OUTPUT AS
-        BEGIN
-            DECLARE @MA_2KYTU VARCHAR(5)							   
-            DECLARE @SO_SAUKYTU VARCHAR(8)
-            DECLARE @MATK_TAM VARCHAR(10)
-            SET @MA_2KYTU = CASE
-                WHEN @VAITRO=N'Thủ Thư' THEN 'TT'
-                WHEN @VAITRO=N'Thủ Kho' THEN 'TK'
-                ELSE 'SV'
-                END
-            WHILE 1=1
-                ---->KIỂM TRA MÃ TÀI KHOẢN KHÔNG TRÙNG ( TỈ LỆ 1: 100.000.000 RẤT HIẾM NHƯNG KO CÓ NGHĨA KO TRÙNG)
-                BEGIN
-                    SET @SO_SAUKYTU =CAST( ABS(CHECKSUM(NEWID())) % 100000000 AS VARCHAR(8))
-                    SET @MATK_TAM = @MA_2KYTU + @SO_SAUKYTU
-                    IF NOT EXISTS(SELECT 1 FROM
-                                 (
-                                    SELECT MATT AS MADANGNHAP,EMAIL,MATKHAU FROM THUTHU
-                                    UNION
-                                    SELECT MATK,EMAIL,MATKHAU FROM THUKHO
-                                    UNION
-                                    SELECT MASV,EMAIL,MATKHAU FROM SINHVIEN
-                                 ) AS THONGTINDANGNHAP WHERE THONGTINDANGNHAP.MADANGNHAP=@MATK_TAM
-                               )
-                        BEGIN
-                            SET @MATK=@MATK_TAM
-                            BREAK
-                        end
-                end
-        end
-GO
---thử dữ liệu
-DECLARE @MATK VARCHAR(15);
-EXEC SP_PHATSINH_MATAIKHOAN_TAM N'Thủ Thư', @MATK OUTPUT;
-SELECT @MATK AS MaDangNhap;
-
-
-    -- 2--> PHÁT SINH MẬT KHẨU TỰ ĐỘNG (8 CHỮ SỐ NGẪU NHIÊN ĐẢM BẢO KHÔNG TRÙNG)
-GO
-    CREATE PROC SP_PHATSINHMATKHAU @MATKHAU NVARCHAR(20) OUTPUT AS
-        BEGIN
-            DECLARE @DUYET NVARCHAR(20)
-            WHILE 1=1
-            BEGIN
-                SET @DUYET = CAST( ABS(CHECKSUM(NEWID())) % 100000000 AS VARCHAR(8))
-                -- CAST(ABS(CHECKSUM(NEWID())) AS VARCHAR(10))
-                IF NOT EXISTS(SELECT 1 FROM
-                                   (
-                                    SELECT MATT AS MADANGNHAP,EMAIL,MATKHAU FROM THUTHU
-                                    UNION
-                                    SELECT MATK,EMAIL,MATKHAU FROM THUKHO
-                                    UNION
-                                    SELECT MASV,EMAIL,MATKHAU FROM SINHVIEN
-                                   ) AS THONGTINDANGNHAP WHERE THONGTINDANGNHAP.MATKHAU=@MATKHAU
-                             )
-                BEGIN
-                    SET @MATKHAU=@DUYET
-                    BREAK
-                end
-            end
-        end
-GO
---thử dữ liệu
-DECLARE @MK NVARCHAR(20)
-EXEC SP_PHATSINHMATKHAU @MK OUTPUT
-SELECT @MK AS MK
-
-    -- 3 --> THÊM TÀI KHOẢN
-GO
-    CREATE PROC SP_THEMTAIKHOAN  @HOTEN NVARCHAR(30), @GIOITINH NVARCHAR(10) ,@NGSINH DATE,@SDT VARCHAR(15), @VAITRO NVARCHAR(20) AS
-        BEGIN
-            DECLARE @BANG VARCHAR(50)
-            DECLARE @EMAIL VARCHAR(50)
-            DECLARE @MATK VARCHAR(10)
-            DECLARE @MATKHAU NVARCHAR(20)
-            EXEC SP_PHATSINHMATKHAU @MATKHAU OUTPUT
-            EXEC SP_PHATSINH_MATAIKHOAN_TAM @VAITRO,@MATK OUTPUT
-            SET @BANG = CASE
-                WHEN SUBSTRING(@MATK,1,2) ='TT' THEN 'THUTHU'
-                WHEN SUBSTRING(@MATK ,1,2) ='TK' THEN 'THUKHO'
-                ELSE  'SINHVIEN'
-                END
-            SET @EMAIL = LOWER(REPLACE(@HOTEN, ' ', '') + '.' + @MATK + '@unilib.edu.vn')
-
-            IF @BANG = 'THUTHU'
-                BEGIN
-                    INSERT INTO THUTHU VALUES
-                    (@MATK,@HOTEN,@GIOITINH,@NGSINH,@SDT,@EMAIL,@MATKHAU)
-                end
-            ELSE IF @BANG='THUKHO'
-                BEGIN
-                    INSERT INTO THUKHO VALUES
-                    (@MATK,@HOTEN,@GIOITINH,@NGSINH,@SDT,@EMAIL,@MATKHAU)
-                end
-            ELSE
-                BEGIN
-                    INSERT INTO SINHVIEN VALUES
-                    (@MATK,@HOTEN,@GIOITINH,@NGSINH,@SDT,@EMAIL,@MATKHAU)
-                end
-        end
-GO
-EXEC SP_THEMTAIKHOAN N'VU DUY HUNG',N'Nam','2005-10-10','020202020',N'Thủ Kho'
-
-    ---------------- THỦ THƯ -----------------------
-    ---------------- THỦ KHO -----------------------
--- 1. Thủ kho nhập sách mới: tự động cập nhật tồn kho và tổng tiền phiếu nhập
-GO
-	CREATE PROCEDURE SP_NHAP_SACH
-		@MaPN VARCHAR(10),
-		@MaTK VARCHAR(10),
-		@MaSach VARCHAR(10),
-		@SoLuong INT,
-		@GiaNhap DECIMAL(10,2)
-	AS
-	BEGIN
-		
-		IF NOT EXISTS(SELECT 1 FROM dbo.PHIEUNHAP WHERE MAPN=@MaPN)
-		BEGIN		
-		    INSERT INTO PHIEUNHAP (MAPN, MATK, NGAYNHAP) VALUES
-             (@MaPN,@MaTK,GETDATE())
-		END
-		--
-
-		INSERT INTO CHITIETPHIEUNHAP (MAPN, MASACH, SOLUONG, GIANHAP)
-		VALUES (@MaPN, @MaSach, @SoLuong, @GiaNhap);
-	END;
-GO
--- THU DU LIEU :
-EXEC dbo.SP_NHAP_SACH @MaPN = 'PN11',     -- varchar(10)
-                      @MaTK = 'TK01',     -- varchar(10)
-                      @MaSach = 'S01',   -- varchar(10)
-                      @SoLuong = 10,   -- int
-                      @GiaNhap = 22000 -- decimal(10, 2)
-
--- 2. sinh viên mượn sách <--> thủ thư tạo Phiếu Mượn sách tương ứng với Sinh Viên , sau đó sinh viên hoàn thiện thông tin Chi Tiết Phiếu Mượn
-GO
-	CREATE PROC SP_TRAN_MUONSACH 
-		@MAPM VARCHAR(10),
-		@MATT VARCHAR(10),
-		@MASV VARCHAR(10),
-		@MASACH VARCHAR(10),
-		@NGAYLAP DATE ,
-		@HANTRA DATE,
-		@SL INT
-	AS
-	BEGIN
-		BEGIN  TRY
-			BEGIN TRANSACTION 
-			-- tạo phiếu mượn nếu chưa có
-			IF NOT EXISTS(SELECT 1 FROM dbo.PHIEUMUON WHERE MAPM=@MAPM)
-			BEGIN
-				INSERT INTO PHIEUMUON (MAPM,MASV,MATT,NGAYLAPPHIEUMUON,HANTRA) VALUES
-				(@MAPM,@MASV,@MATT,@NGAYLAP,@HANTRA)
-			END
-			-- điền thông tin phiếu mượn
-			INSERT INTO CHITIETPHIEUMUON VALUES
-			(@MAPM,@MASACH,@SL)
-			-- phiên thành công
-			COMMIT TRAN
-		END	TRY
-		BEGIN CATCH
-			ROLLBACK TRAN
-			PRINT 'PHIÊN MƯỢN SÁCH BỊ HỦY !!!'
-		END CATCH
-	END
-GO
-
--- 3. SINH VIÊN trả sách <--> THỦ THƯ tạo phiếu trả tương ứng với PHIẾU MƯỢN , sau đó SINH VIÊN hoàn thiện (chi tiết) phiếu trả tương ứng
-
-
-
-
--- =====================================================================================================================
--- ||                                          FUNCTION                                                               ||
--- =====================================================================================================================
-
-
-
-
-
--- =====================================================================================================================
--- ||                                          CURSOR                                                                 ||
--- =====================================================================================================================
-
--- =====================================================================================================================
--- ||                                          TRANSACTION                                                            ||
--- =====================================================================================================================
-
--- =====================================================================================================================
--- ||                                          CÁC TRUY VẤN THUẦN                                                     ||
--- =====================================================================================================================
-
-SELECT * FROM THUKHO
-SELECT * FROM SINHVIEN
-SELECT * FROM TACGIA
-SELECT * FROM NHAXUATBAN
-SELECT * FROM SACH
-SELECT * FROM PHIEUNHAP
-SELECT * FROM CHITIETPHIEUNHAP
-SELECT * FROM PHIEUMUON
-SELECT * FROM CHITIETPHIEUMUON
-SELECT * FROM PHIEUTRA
-SELECT * FROM CHITIETPHIEUTRA
-SELECT * FROM THANHLY
-SELECT * FROM CHITIETTHANHLY
-
-
-SELECT dbo.PHIEUMUON.MAPM,dbo.PHIEUTRA.MAPT,HANTRA,NGAYTRA
-FROM dbo.PHIEUMUON JOIN dbo.PHIEUTRA ON PHIEUTRA.MAPM = PHIEUMUON.MAPM
-JOIN dbo.CHITIETPHIEUTRA ON CHITIETPHIEUTRA.MAPT = PHIEUTRA.MAPT

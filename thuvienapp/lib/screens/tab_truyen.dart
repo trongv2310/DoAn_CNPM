@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/sach.dart';
+import '../models/user.dart';
 import '../providers/api_service.dart';
+import '../widgets/book_section.dart'; // <-- Import Widget hiển thị danh sách ngang
 
 class TabTruyen extends StatefulWidget {
+  final User user; // Nhận User từ HomeScreen
+  const TabTruyen({super.key, required this.user});
+
   @override
   _TabTruyenState createState() => _TabTruyenState();
 }
@@ -19,72 +24,97 @@ class _TabTruyenState extends State<TabTruyen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Phần Header giả lập (Banner, tìm kiếm...)
-          Container(
-            padding: EdgeInsets.all(16),
-            color: Colors.white,
+    return FutureBuilder<List<Sach>>(
+      future: futureSach,
+      builder: (context, snapshot) {
+        // 1. Đang tải
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        // 2. Lỗi
+        else if (snapshot.hasError) {
+          return Center(child: Text("Lỗi kết nối: ${snapshot.error}"));
+        }
+        // 3. Có dữ liệu -> Hiển thị giao diện giống ảnh
+        else {
+          List<Sach> allBooks = snapshot.data ?? [];
+
+          // Chia sách thành 2 phần
+          List<Sach> recommendedBooks = allBooks.take(5).toList();
+          List<Sach> latestUpdates = allBooks.skip(5).toList();
+
+          return SingleChildScrollView(
             child: Column(
               children: [
+                // --- BANNER ---
                 Container(
-                  height: 40,
-                  decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(20)),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: "Tìm kiếm truyện...",
-                      border: InputBorder.none,
-                      prefixIcon: Icon(Icons.search, color: Colors.grey),
-                      contentPadding: EdgeInsets.only(bottom: 10),
+                  height: 200,
+                  margin: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
+                    image: const DecorationImage(
+                      image: NetworkImage('https://i.ibb.co/C031mGf/main-banner.jpg'),
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
-                SizedBox(height: 10),
-                Container(
-                  height: 120,
-                  decoration: BoxDecoration(color: Colors.blue[100], borderRadius: BorderRadius.circular(10)),
-                  child: Center(child: Text("BANNER QUẢNG CÁO", style: TextStyle(color: Colors.blue))),
-                )
+
+                const SizedBox(height: 16),
+
+                // --- CÁC NÚT DANH MỤC TRÒN ---
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildCategoryButton(Icons.list, 'Thể Loại'),
+                      _buildCategoryButton(Icons.tune, 'Bộ Lọc'),
+                      _buildCategoryButton(Icons.lightbulb_outlined, 'Tác Giả'),
+                      _buildCategoryButton(Icons.contact_support_outlined, 'Tương Tác'),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // --- SECTION 1: KHUYẾN KHÍCH ĐỌC ---
+                BookSection(
+                  title: 'KHUYẾN KHÍCH ĐỌC',
+                  books: recommendedBooks,
+                  user: widget.user, // Truyền user để mượn sách
+                ),
+
+                const SizedBox(height: 24),
+
+                // --- SECTION 2: TRUYỆN MỚI CẬP NHẬT ---
+                BookSection(
+                  title: 'TRUYỆN MỚI CẬP NHẬT',
+                  books: latestUpdates,
+                  user: widget.user, // Truyền user để mượn sách
+                ),
+
+                const SizedBox(height: 24),
               ],
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text("TRUYỆN MỚI CẬP NHẬT", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          ),
-          Expanded(
-            child: FutureBuilder<List<Sach>>(
-              future: futureSach,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) return Center(child: CircularProgressIndicator());
-                if (!snapshot.hasData || snapshot.data!.isEmpty) return Center(child: Text("Chưa có sách nào"));
+          );
+        }
+      },
+    );
+  }
 
-                return GridView.builder(
-                  padding: EdgeInsets.all(10),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2, childAspectRatio: 0.7, crossAxisSpacing: 10, mainAxisSpacing: 10),
-                  itemCount: snapshot.data!.length,
-                  itemBuilder: (context, index) {
-                    final s = snapshot.data![index];
-                    return Card(
-                      elevation: 2,
-                      child: Column(
-                        children: [
-                          Expanded(child: Container(color: Colors.grey[300], child: Icon(Icons.book, size: 40))),
-                          Padding(padding: EdgeInsets.all(5), child: Text(s.tensach, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                          Text("${s.giamuon.toInt()} đ", style: TextStyle(color: Colors.red, fontSize: 10)),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+  // Widget nút tròn nhỏ
+  Widget _buildCategoryButton(IconData icon, String label) {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 25,
+          backgroundColor: Colors.blueAccent.withOpacity(0.1),
+          child: Icon(icon, color: Colors.blueAccent, size: 30),
+        ),
+        const SizedBox(height: 8),
+        Text(label, style: const TextStyle(fontSize: 12)),
+      ],
     );
   }
 }

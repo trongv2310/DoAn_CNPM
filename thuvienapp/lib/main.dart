@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
-// Import màn hình đăng nhập để gọi nó đầu tiên
+import 'package:provider/provider.dart'; // Thư viện Provider
+import 'providers/user_provider.dart';   // Provider quản lý User
+import 'providers/borrow_cart_provider.dart'; // Provider quản lý Giỏ hàng
 import 'screens/login_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    // Cung cấp Provider cho toàn bộ ứng dụng
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => BorrowCartProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -12,17 +23,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false, // Tắt chữ "Debug" màu đỏ ở góc phải
+      debugShowCheckedModeBanner: false,
       title: 'Ứng Dụng Thư Viện',
-
-      // Cấu hình màu sắc chủ đạo cho toàn App
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        useMaterial3: true, // Sử dụng chuẩn thiết kế mới đẹp hơn
+        useMaterial3: true,
         scaffoldBackgroundColor: Colors.white,
       ),
-
-      // QUAN TRỌNG: Màn hình đầu tiên chạy là Đăng Nhập
       home: LoginScreen(),
     );
   }

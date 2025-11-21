@@ -16,36 +16,24 @@ public partial class ThuVienDbContext : DbContext
     }
 
     public virtual DbSet<Chitietphieumuon> Chitietphieumuons { get; set; }
-
     public virtual DbSet<Chitietphieunhap> Chitietphieunhaps { get; set; }
-
     public virtual DbSet<Chitietphieutra> Chitietphieutras { get; set; }
-
     public virtual DbSet<Chitietthanhly> Chitietthanhlies { get; set; }
-
     public virtual DbSet<Nhaxuatban> Nhaxuatbans { get; set; }
-
     public virtual DbSet<Phanquyen> Phanquyens { get; set; }
-
     public virtual DbSet<Phieumuon> Phieumuons { get; set; }
-
     public virtual DbSet<Phieunhap> Phieunhaps { get; set; }
-
     public virtual DbSet<Phieutra> Phieutras { get; set; }
-
     public virtual DbSet<Sach> Saches { get; set; }
-
     public virtual DbSet<Sinhvien> Sinhviens { get; set; }
-
     public virtual DbSet<Tacgium> Tacgia { get; set; }
-
     public virtual DbSet<Taikhoan> Taikhoans { get; set; }
-
     public virtual DbSet<Thanhly> Thanhlies { get; set; }
-
     public virtual DbSet<Thukho> Thukhos { get; set; }
-
     public virtual DbSet<Thuthu> Thuthus { get; set; }
+    public virtual DbSet<Hoidap> Hoidaps { get; set; }
+    public virtual DbSet<Gopy> Gopies { get; set; }
+    public virtual DbSet<Danhgiasach> Danhgiasaches { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -65,6 +53,13 @@ public partial class ThuVienDbContext : DbContext
                 .HasDefaultValue(0)
                 .HasColumnName("SOLUONG");
 
+            // --- THÊM MAPPING CHO 2 CỘT MỚI ---
+            entity.Property(e => e.Hantra).HasColumnName("HANTRA");
+            entity.Property(e => e.Solangiahan)
+                .HasDefaultValue(0)
+                .HasColumnName("SOLANGIAHAN");
+            // ----------------------------------
+
             entity.HasOne(d => d.MapmNavigation).WithMany(p => p.Chitietphieumuons)
                 .HasForeignKey(d => d.Mapm)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -80,7 +75,7 @@ public partial class ThuVienDbContext : DbContext
         {
             entity.HasKey(e => new { e.Mapn, e.Masach }).HasName("PK_CTPN");
 
-            entity.ToTable("CHITIETPHIEUNHAP");
+            entity.ToTable("CHITIETPHIEUNHAP", tb => tb.HasTrigger("TG_CAPNHATSLTONCUASACH_CTPN"));
 
             entity.Property(e => e.Mapn).HasColumnName("MAPN");
             entity.Property(e => e.Masach).HasColumnName("MASACH");
@@ -107,30 +102,26 @@ public partial class ThuVienDbContext : DbContext
         modelBuilder.Entity<Chitietphieutra>(entity =>
         {
             entity.HasKey(e => new { e.Mapt, e.Masach }).HasName("PK_CTPT");
+            entity.ToTable("CHITIETPHIEUTRA", tb =>
+            {
+                tb.HasTrigger("TG_CAPNHATTIENPHAT_PT");      
+                tb.HasTrigger("TG_CAPNHATSLTONCUASACH_CTPT"); 
+            });
 
-            entity.ToTable("CHITIETPHIEUTRA");
-
-            entity.Property(e => e.Mapt).HasColumnName("MAPT");
+             entity.Property(e => e.Mapt).HasColumnName("MAPT");
             entity.Property(e => e.Masach).HasColumnName("MASACH");
             entity.Property(e => e.Ngaytra).HasColumnName("NGAYTRA");
             entity.Property(e => e.Soluongtra).HasColumnName("SOLUONGTRA");
 
-            entity.HasOne(d => d.MaptNavigation).WithMany(p => p.Chitietphieutras)
-                .HasForeignKey(d => d.Mapt)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_CTPT_PT");
-
-            entity.HasOne(d => d.MasachNavigation).WithMany(p => p.Chitietphieutras)
-                .HasForeignKey(d => d.Masach)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_CTPT_SACH");
+            entity.HasOne(d => d.MaptNavigation).WithMany(p => p.Chitietphieutras).HasForeignKey(d => d.Mapt).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_CTPT_PT");
+            entity.HasOne(d => d.MasachNavigation).WithMany(p => p.Chitietphieutras).HasForeignKey(d => d.Masach).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_CTPT_SACH");
         });
 
         modelBuilder.Entity<Chitietthanhly>(entity =>
         {
             entity.HasKey(e => new { e.Matl, e.Masach }).HasName("PK_CTTL");
 
-            entity.ToTable("CHITIETTHANHLY");
+            entity.ToTable("CHITIETTHANHLY", tb => tb.HasTrigger("TG_CAPNHATSLTON_THANHLY"));
 
             entity.Property(e => e.Matl).HasColumnName("MATL");
             entity.Property(e => e.Masach).HasColumnName("MASACH");
@@ -193,7 +184,7 @@ public partial class ThuVienDbContext : DbContext
 
             entity.ToTable("PHIEUMUON");
 
-            entity.Property(e => e.Mapm).HasColumnName("MAPM");
+            entity.Property(e => e.Mapm).HasColumnName("MAPM").ValueGeneratedOnAdd();
             entity.Property(e => e.Hantra).HasColumnName("HANTRA");
             entity.Property(e => e.Masv).HasColumnName("MASV");
             entity.Property(e => e.Matt).HasColumnName("MATT");
@@ -468,6 +459,59 @@ public partial class ThuVienDbContext : DbContext
                 .HasForeignKey<Thuthu>(d => d.Mataikhoan)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_THUTHU_TAIKHOAN");
+        });
+
+        modelBuilder.Entity<Hoidap>(entity =>
+        {
+            entity.ToTable("HOIDAP");
+            entity.HasKey(e => e.Mahoidap);
+            entity.Property(e => e.Mahoidap).HasColumnName("MAHOIDAP");
+            entity.Property(e => e.Masv).HasColumnName("MASV");
+            entity.Property(e => e.Cauhoi).HasColumnName("CAUHOI");
+            entity.Property(e => e.Traloi).HasColumnName("TRALOI");
+            entity.Property(e => e.Matt).HasColumnName("MATT");
+            entity.Property(e => e.Thoigianhoi).HasColumnName("THOIGIANHOI").HasColumnType("datetime");
+            entity.Property(e => e.Thoigiantraloi).HasColumnName("THOIGIANTRALOI").HasColumnType("datetime");
+            entity.Property(e => e.Trangthai).HasColumnName("TRANGTHAI").HasMaxLength(50);
+
+            entity.HasOne(d => d.MasvNavigation).WithMany()
+                .HasForeignKey(d => d.Masv).HasConstraintName("FK_HOIDAP_SV");
+
+            entity.HasOne(d => d.MattNavigation).WithMany()
+                .HasForeignKey(d => d.Matt).HasConstraintName("FK_HOIDAP_TT");
+        });
+
+        modelBuilder.Entity<Gopy>(entity =>
+        {
+            entity.ToTable("GOPY");
+            entity.HasKey(e => e.Magopy);
+            entity.Property(e => e.Magopy).HasColumnName("MAGOPY");
+            entity.Property(e => e.Masv).HasColumnName("MASV");
+            entity.Property(e => e.Noidung).HasColumnName("NOIDUNG");
+            entity.Property(e => e.Loaigopy).HasColumnName("LOAIGOPY").HasMaxLength(50);
+            entity.Property(e => e.Thoigiangui).HasColumnName("THOIGIANGUI").HasColumnType("datetime");
+            entity.Property(e => e.Trangthai).HasColumnName("TRANGTHAI").HasMaxLength(50);
+
+            entity.HasOne(d => d.MasvNavigation).WithMany()
+                .HasForeignKey(d => d.Masv).HasConstraintName("FK_GOPY_SV");
+        });
+
+        modelBuilder.Entity<Danhgiasach>(entity =>
+        {
+            entity.ToTable("DANHGIASACH");
+            entity.HasKey(e => e.Madanhgia);
+            entity.Property(e => e.Madanhgia).HasColumnName("MADANHGIA");
+            entity.Property(e => e.Masach).HasColumnName("MASACH");
+            entity.Property(e => e.Masv).HasColumnName("MASV");
+            entity.Property(e => e.Diem).HasColumnName("DIEM");
+            entity.Property(e => e.Nhanxet).HasColumnName("NHANXET");
+            entity.Property(e => e.Thoigian).HasColumnName("THOIGIAN").HasColumnType("datetime");
+
+            entity.HasOne(d => d.MasachNavigation).WithMany()
+                .HasForeignKey(d => d.Masach).HasConstraintName("FK_DGS_SACH");
+
+            entity.HasOne(d => d.MasvNavigation).WithMany()
+                .HasForeignKey(d => d.Masv).HasConstraintName("FK_DGS_SV");
         });
 
         OnModelCreatingPartial(modelBuilder);
