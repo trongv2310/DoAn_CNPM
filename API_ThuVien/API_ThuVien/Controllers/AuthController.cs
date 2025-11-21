@@ -71,11 +71,11 @@ namespace API_ThuVien.Controllers
             // 3. Trả về kết quả JSON
             return Ok(new
             {
-                maTaiKhoan = user.Mataikhoan,
-                tenDangNhap = user.Tendangnhap.Trim(),
-                hoVaTen = hoVaTen,
-                maQuyen = user.Maquyen,
-                entityId = entityId
+                MaTaiKhoan = user.Mataikhoan, // Viết Hoa chữ cái đầu
+                TenDangNhap = user.Tendangnhap.Trim(),
+                HoVaTen = hoVaTen,
+                MaQuyen = user.Maquyen,
+                EntityId = entityId
             });
         }
 

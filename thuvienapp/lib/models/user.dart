@@ -20,8 +20,8 @@ class User {
       hoVaTen: json['hoVaTen'] ?? json['HoVaTen'] ?? 'Người dùng',
       maQuyen: json['maQuyen'] ?? json['MaQuyen'] ?? 4,
 
-      // Dòng này quan trọng nhất để lấy đúng ID Sinh viên
-      entityId: json['entityId'] ?? json['EntityId'] ?? json['MaSinhVien'] ?? json['MaThuThu'] ?? 0,
+      // SỬA: Bắt cả chữ hoa chữ thường
+      entityId: json['entityId'] ?? json['EntityId'] ?? json['MaSinhVien'] ?? 0,
     );
   }
 }

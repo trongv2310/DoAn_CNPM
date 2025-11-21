@@ -53,6 +53,13 @@ public partial class ThuVienDbContext : DbContext
                 .HasDefaultValue(0)
                 .HasColumnName("SOLUONG");
 
+            // --- THÊM MAPPING CHO 2 CỘT MỚI ---
+            entity.Property(e => e.Hantra).HasColumnName("HANTRA");
+            entity.Property(e => e.Solangiahan)
+                .HasDefaultValue(0)
+                .HasColumnName("SOLANGIAHAN");
+            // ----------------------------------
+
             entity.HasOne(d => d.MapmNavigation).WithMany(p => p.Chitietphieumuons)
                 .HasForeignKey(d => d.Mapm)
                 .OnDelete(DeleteBehavior.ClientSetNull)
