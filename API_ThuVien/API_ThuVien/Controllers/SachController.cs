@@ -119,5 +119,26 @@ namespace API_ThuVien.Controllers
         {
             return _context.Saches.Any(e => e.Masach == id);
         }
+
+        [HttpGet("timkiem")]
+        public async Task<ActionResult<IEnumerable<Sach>>> SearchSach([FromQuery] string keyword)
+        {
+            if (string.IsNullOrEmpty(keyword))
+            {
+                return await _context.Saches.ToListAsync(); // Trả về hết nếu không có từ khóa
+            }
+
+            // Tìm kiếm gần đúng (chứa từ khóa) và không phân biệt hoa thường
+            var result = await _context.Saches
+                .Where(s => s.Tensach.ToLower().Contains(keyword.ToLower()))
+                .ToListAsync();
+
+            if (result == null || result.Count == 0)
+            {
+                return NotFound(new { message = "Không tìm thấy sách nào." });
+            }
+
+            return Ok(result);
+        }
     }
 }

@@ -299,7 +299,7 @@ CREATE TABLE GOPY (
 GO
 
 -- =========================================================
--- 19) BẢNG ĐÁNH GIÁ SÁCH (Chức năng Tương tác - Mới)
+-- 19) BẢNG ĐÁNH GIÁ SÁCH 
 -- =========================================================
 CREATE TABLE DANHGIASACH (
     MADANHGIA INT IDENTITY(1,1) PRIMARY KEY,

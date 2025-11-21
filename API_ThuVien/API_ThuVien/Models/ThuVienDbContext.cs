@@ -16,41 +16,23 @@ public partial class ThuVienDbContext : DbContext
     }
 
     public virtual DbSet<Chitietphieumuon> Chitietphieumuons { get; set; }
-
     public virtual DbSet<Chitietphieunhap> Chitietphieunhaps { get; set; }
-
     public virtual DbSet<Chitietphieutra> Chitietphieutras { get; set; }
-
     public virtual DbSet<Chitietthanhly> Chitietthanhlies { get; set; }
-
     public virtual DbSet<Nhaxuatban> Nhaxuatbans { get; set; }
-
     public virtual DbSet<Phanquyen> Phanquyens { get; set; }
-
     public virtual DbSet<Phieumuon> Phieumuons { get; set; }
-
     public virtual DbSet<Phieunhap> Phieunhaps { get; set; }
-
     public virtual DbSet<Phieutra> Phieutras { get; set; }
-
     public virtual DbSet<Sach> Saches { get; set; }
-
     public virtual DbSet<Sinhvien> Sinhviens { get; set; }
-
     public virtual DbSet<Tacgium> Tacgia { get; set; }
-
     public virtual DbSet<Taikhoan> Taikhoans { get; set; }
-
     public virtual DbSet<Thanhly> Thanhlies { get; set; }
-
     public virtual DbSet<Thukho> Thukhos { get; set; }
-
     public virtual DbSet<Thuthu> Thuthus { get; set; }
-
     public virtual DbSet<Hoidap> Hoidaps { get; set; }
-
     public virtual DbSet<Gopy> Gopies { get; set; }
-
     public virtual DbSet<Danhgiasach> Danhgiasaches { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -113,23 +95,19 @@ public partial class ThuVienDbContext : DbContext
         modelBuilder.Entity<Chitietphieutra>(entity =>
         {
             entity.HasKey(e => new { e.Mapt, e.Masach }).HasName("PK_CTPT");
+            entity.ToTable("CHITIETPHIEUTRA", tb =>
+            {
+                tb.HasTrigger("TG_CAPNHATTIENPHAT_PT");      
+                tb.HasTrigger("TG_CAPNHATSLTONCUASACH_CTPT"); 
+            });
 
-            entity.ToTable("CHITIETPHIEUTRA");
-
-            entity.Property(e => e.Mapt).HasColumnName("MAPT");
+             entity.Property(e => e.Mapt).HasColumnName("MAPT");
             entity.Property(e => e.Masach).HasColumnName("MASACH");
             entity.Property(e => e.Ngaytra).HasColumnName("NGAYTRA");
             entity.Property(e => e.Soluongtra).HasColumnName("SOLUONGTRA");
 
-            entity.HasOne(d => d.MaptNavigation).WithMany(p => p.Chitietphieutras)
-                .HasForeignKey(d => d.Mapt)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_CTPT_PT");
-
-            entity.HasOne(d => d.MasachNavigation).WithMany(p => p.Chitietphieutras)
-                .HasForeignKey(d => d.Masach)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_CTPT_SACH");
+            entity.HasOne(d => d.MaptNavigation).WithMany(p => p.Chitietphieutras).HasForeignKey(d => d.Mapt).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_CTPT_PT");
+            entity.HasOne(d => d.MasachNavigation).WithMany(p => p.Chitietphieutras).HasForeignKey(d => d.Masach).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_CTPT_SACH");
         });
 
         modelBuilder.Entity<Chitietthanhly>(entity =>

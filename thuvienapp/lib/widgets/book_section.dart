@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import '../models/sach.dart'; // Import model Sach của chúng ta
+import '../models/user.dart';
 
 class BookSection extends StatelessWidget {
   final String title;
   final List<Sach> books;
+  final User user;
   final VoidCallback? onSeeMore;
 
   const BookSection({
     Key? key,
     required this.title,
     required this.books,
+    required this.user,
     this.onSeeMore,
   }) : super(key: key);
 

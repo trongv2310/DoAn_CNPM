@@ -52,13 +52,13 @@ namespace API_ThuVien.Controllers
             if (user.Maquyen == 4)
             {
                 var sv = await _context.Sinhviens.FirstOrDefaultAsync(s => s.Mataikhoan == user.Mataikhoan);
-                if (sv != null) hoVaTen = sv.Hovaten;
+                if (sv != null) { hoVaTen = sv.Hovaten; entityId = sv.Masv; }
             }
             // Nếu là Thủ thư (Mã quyền 2)
             else if (user.Maquyen == 2)
             {
                 var tt = await _context.Thuthus.FirstOrDefaultAsync(t => t.Mataikhoan == user.Mataikhoan);
-                if (tt != null) hoVaTen = tt.Hovaten;
+                if (tt != null) { hoVaTen = tt.Hovaten; entityId = tt.Matt; }
             }
             //Nếu là Thủ kho (Mã quyền 3
             else if (user.Maquyen == 3)
@@ -79,7 +79,7 @@ namespace API_ThuVien.Controllers
             });
         }
 
-        // Model hứng dữ liệu đổi pass
+        // Model hứng dữ liệu đổi pass  
         public class ChangePasswordRequest
         {
             public int MaTaiKhoan { get; set; }

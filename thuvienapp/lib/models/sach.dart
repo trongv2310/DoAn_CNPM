@@ -7,6 +7,8 @@ class Sach {
   final String? theLoai;
   final String? tenTacGia;
   final String? moTa;
+  final String? tennxb;
+
 
   Sach({
     required this.masach,
@@ -17,6 +19,7 @@ class Sach {
     this.theLoai,
     this.tenTacGia,
     this.moTa,
+    this.tennxb
   });
 
   factory Sach.fromJson(Map<String, dynamic> json) {
