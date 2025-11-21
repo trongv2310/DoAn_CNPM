@@ -184,7 +184,7 @@ public partial class ThuVienDbContext : DbContext
 
             entity.ToTable("PHIEUMUON");
 
-            entity.Property(e => e.Mapm).HasColumnName("MAPM");
+            entity.Property(e => e.Mapm).HasColumnName("MAPM").ValueGeneratedOnAdd();
             entity.Property(e => e.Hantra).HasColumnName("HANTRA");
             entity.Property(e => e.Masv).HasColumnName("MASV");
             entity.Property(e => e.Matt).HasColumnName("MATT");

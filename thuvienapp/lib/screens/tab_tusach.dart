@@ -24,7 +24,7 @@ class _TabTuSachState extends State<TabTuSach> {
 
   void _loadData() {
     setState(() {
-      _futureHistory = _apiService.fetchLichSuMuon(widget.user.entityId);
+      _futureHistory = _apiService.fetchLichSuMuon(widget.user.maTaiKhoan);
     });
   }
 

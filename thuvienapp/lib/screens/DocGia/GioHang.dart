@@ -61,7 +61,7 @@ class _CartScreenState extends State<CartScreen> {
 
     // 4. Gọi API (Dùng hàm muonNhieuSachFull mới cập nhật)
     final result = await ApiService().muonNhieuSachFull(
-        widget.user.entityId,
+        widget.user.maTaiKhoan,
         requestList,
         _selectedDate
     );
