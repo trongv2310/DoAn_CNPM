@@ -333,48 +333,7 @@ GO
 -- ===============================================================
 DROP TRIGGER IF EXISTS TG_CAPNHATSLTONCUASACH_CTPM;
 GO
-CREATE TRIGGER TG_CAPNHATSLTONCUASACH_CTPM
-ON CHITIETPHIEUMUON
-AFTER INSERT, UPDATE, DELETE
-AS
-BEGIN
-    SET NOCOUNT ON;
 
-    -- Kiểm tra không mượn vượt số lượng tồn
-    IF EXISTS (
-        SELECT 1
-        FROM inserted I
-        JOIN SACH S ON I.MASACH = S.MASACH
-        WHERE ISNULL(I.SOLUONG, 0) > ISNULL(S.SOLUONGTON, 0)
-    )
-    BEGIN
-        RAISERROR (N'Số lượng mượn vượt quá tồn kho!', 16, 1);
-        ROLLBACK TRANSACTION;
-        RETURN;
-    END;
-
-    -- Cập nhật tồn kho
-    UPDATE S
-    SET S.SOLUONGTON =
-        ISNULL(S.SOLUONGTON, 0)
-        - ISNULL(I.SL_MUON, 0)
-        + ISNULL(D.SL_TRA, 0)
-    FROM SACH S
-    LEFT JOIN (
-        SELECT MASACH, SUM(ISNULL(SOLUONG, 0)) AS SL_MUON
-        FROM inserted GROUP BY MASACH
-    ) I ON S.MASACH = I.MASACH
-    LEFT JOIN (
-        SELECT MASACH, SUM(ISNULL(SOLUONG, 0)) AS SL_TRA
-        FROM deleted GROUP BY MASACH
-    ) D ON S.MASACH = D.MASACH
-    WHERE S.MASACH IN (
-        SELECT MASACH FROM inserted
-        UNION
-        SELECT MASACH FROM deleted
-    );
-END;
-GO
 
 -- ===============================================================
 -- 3. CẬP NHẬT SỐ LƯỢNG TỒN CỦA SÁCH KHI TRẢ
