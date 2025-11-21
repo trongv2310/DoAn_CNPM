@@ -256,7 +256,7 @@ public partial class ThuVienDbContext : DbContext
         {
             entity.HasKey(e => e.Masach).HasName("PK__SACH__3FC48E4CC7BFDFD1");
 
-            entity.ToTable("SACH", tb => tb.HasTrigger("TG_TRANGTHAI_SACH"));
+            entity.ToTable("SACH");
 
             entity.Property(e => e.Masach).HasColumnName("MASACH");
             entity.Property(e => e.Giamuon)
