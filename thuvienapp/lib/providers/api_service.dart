@@ -293,4 +293,98 @@ class ApiService {
       return [];
     }
   }
+
+  // ============================================================
+  // 6. CHỨC NĂNG ADMIN (Quản lý tài khoản)
+  // ============================================================
+
+  // Lấy danh sách tất cả tài khoản
+  Future<List<dynamic>> getAllUsers() async {
+    final url = Uri.parse('$baseUrl/Admin/users');
+    try {
+      final response = await http.get(url);
+      return response.statusCode == 200 ? json.decode(response.body) : [];
+    } catch (e) {
+      print("Lỗi get users: $e");
+      return [];
+    }
+  }
+
+  // Thêm tài khoản mới
+  Future<bool> addUser(Map<String, dynamic> userData) async {
+    final url = Uri.parse('$baseUrl/Admin/add-user');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(userData),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi add user: $e");
+      return false;
+    }
+  }
+
+  // Cập nhật trạng thái (Khóa/Mở khóa)
+  Future<bool> updateUserStatus(int id, String status) async {
+    // API: api/Admin/update-status/{id}?status=...
+    final url = Uri.parse('$baseUrl/Admin/update-status/$id?status=$status');
+    try {
+      final response = await http.post(url);
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi update status: $e");
+      return false;
+    }
+  }
+
+  // Xóa tài khoản
+  Future<bool> deleteUser(int id) async {
+    final url = Uri.parse('$baseUrl/Admin/delete-user/$id');
+    try {
+      final response = await http.delete(url);
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi delete user: $e");
+      return false;
+    }
+  }
+
+  // --- ADMIN: NHẬT KÝ HỆ THỐNG ---
+  Future<List<dynamic>> getSystemLogs() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/Admin/logs-system'));
+      return response.statusCode == 200 ? json.decode(response.body) : [];
+    } catch (e) { return []; }
+  }
+
+  Future<List<dynamic>> getTransactionLogs() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/Admin/logs-transaction'));
+      return response.statusCode == 200 ? json.decode(response.body) : [];
+    } catch (e) { return []; }
+  }
+
+  Future<List<dynamic>> getViolationLogs() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/Admin/logs-violation'));
+      return response.statusCode == 200 ? json.decode(response.body) : [];
+    } catch (e) { return []; }
+  }
+
+  // --- ADMIN: BÁO CÁO ---
+  Future<Map<String, dynamic>> getLibrarianReport() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/Admin/report-librarian'));
+      return response.statusCode == 200 ? json.decode(response.body) : {};
+    } catch (e) { return {}; }
+  }
+
+  Future<Map<String, dynamic>> getStorekeeperReport() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/Admin/report-storekeeper'));
+      return response.statusCode == 200 ? json.decode(response.body) : {};
+    } catch (e) { return {}; }
+  }
 }
