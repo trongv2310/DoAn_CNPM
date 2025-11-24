@@ -37,7 +37,7 @@ public partial class ThuVienDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=DESKTOP-HHFANUM;Database=ThuVienDB;Trusted_Connection=True;TrustServerCertificate=True;");
+        => optionsBuilder.UseSqlServer("Server=Dang\\SQLEXPRESS;Database=ThuVienDB;Trusted_Connection=True;TrustServerCertificate=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,7 +45,8 @@ public partial class ThuVienDbContext : DbContext
         {
             entity.HasKey(e => new { e.Mapm, e.Masach }).HasName("PK_CTPM");
 
-            entity.ToTable("CHITIETPHIEUMUON");
+            // CORRECTED: Added HasTrigger configuration
+            entity.ToTable("CHITIETPHIEUMUON", tb => tb.HasTrigger("TG_CAPNHATSLTONCUASACH_CTPM"));
 
             entity.Property(e => e.Mapm).HasColumnName("MAPM");
             entity.Property(e => e.Masach).HasColumnName("MASACH");
@@ -53,12 +54,10 @@ public partial class ThuVienDbContext : DbContext
                 .HasDefaultValue(0)
                 .HasColumnName("SOLUONG");
 
-            // --- THÊM MAPPING CHO 2 CỘT MỚI ---
             entity.Property(e => e.Hantra).HasColumnName("HANTRA");
             entity.Property(e => e.Solangiahan)
                 .HasDefaultValue(0)
                 .HasColumnName("SOLANGIAHAN");
-            // ----------------------------------
 
             entity.HasOne(d => d.MapmNavigation).WithMany(p => p.Chitietphieumuons)
                 .HasForeignKey(d => d.Mapm)
@@ -75,7 +74,12 @@ public partial class ThuVienDbContext : DbContext
         {
             entity.HasKey(e => new { e.Mapn, e.Masach }).HasName("PK_CTPN");
 
-            entity.ToTable("CHITIETPHIEUNHAP", tb => tb.HasTrigger("TG_CAPNHATSLTONCUASACH_CTPN"));
+            // CORRECTED: Added HasTrigger configuration
+            entity.ToTable("CHITIETPHIEUNHAP", tb =>
+            {
+                tb.HasTrigger("TG_CAPNHATSLTONCUASACH_CTPN");
+                tb.HasTrigger("TG_CAPNHATTONGTIEN_PN");
+            });
 
             entity.Property(e => e.Mapn).HasColumnName("MAPN");
             entity.Property(e => e.Masach).HasColumnName("MASACH");
@@ -102,13 +106,16 @@ public partial class ThuVienDbContext : DbContext
         modelBuilder.Entity<Chitietphieutra>(entity =>
         {
             entity.HasKey(e => new { e.Mapt, e.Masach }).HasName("PK_CTPT");
+
+            // CORRECTED: Added HasTrigger configuration
             entity.ToTable("CHITIETPHIEUTRA", tb =>
             {
-                tb.HasTrigger("TG_CAPNHATTIENPHAT_PT");      
-                tb.HasTrigger("TG_CAPNHATSLTONCUASACH_CTPT"); 
+                tb.HasTrigger("TG_CAPNHATTIENPHAT_PT");
+                tb.HasTrigger("TG_CAPNHATSLTONCUASACH_CTPT");
+                tb.HasTrigger("TG_CAPNHATTRANGTHAI_PM"); // This trigger might affect updates here indirectly or on Phieutra
             });
 
-             entity.Property(e => e.Mapt).HasColumnName("MAPT");
+            entity.Property(e => e.Mapt).HasColumnName("MAPT");
             entity.Property(e => e.Masach).HasColumnName("MASACH");
             entity.Property(e => e.Ngaytra).HasColumnName("NGAYTRA");
             entity.Property(e => e.Soluongtra).HasColumnName("SOLUONGTRA");
@@ -121,7 +128,12 @@ public partial class ThuVienDbContext : DbContext
         {
             entity.HasKey(e => new { e.Matl, e.Masach }).HasName("PK_CTTL");
 
-            entity.ToTable("CHITIETTHANHLY", tb => tb.HasTrigger("TG_CAPNHATSLTON_THANHLY"));
+            // CORRECTED: Added HasTrigger configuration
+            entity.ToTable("CHITIETTHANHLY", tb =>
+            {
+                tb.HasTrigger("TG_CAPNHATSLTON_THANHLY");
+                tb.HasTrigger("TG_CAPNHATTONGTIEN_TL");
+            });
 
             entity.Property(e => e.Matl).HasColumnName("MATL");
             entity.Property(e => e.Masach).HasColumnName("MASACH");
@@ -182,7 +194,8 @@ public partial class ThuVienDbContext : DbContext
         {
             entity.HasKey(e => e.Mapm).HasName("PK__PHIEUMUO__603F61CD2957288E");
 
-            entity.ToTable("PHIEUMUON");
+            // CORRECTED: Added HasTrigger configuration (if TG_CAPNHATTRANGTHAI_PM affects it)
+            entity.ToTable("PHIEUMUON", tb => tb.HasTrigger("TG_CAPNHATTRANGTHAI_PM"));
 
             entity.Property(e => e.Mapm).HasColumnName("MAPM").ValueGeneratedOnAdd();
             entity.Property(e => e.Hantra).HasColumnName("HANTRA");
@@ -209,7 +222,8 @@ public partial class ThuVienDbContext : DbContext
         {
             entity.HasKey(e => e.Mapn).HasName("PK__PHIEUNHA__603F61CEE562FF45");
 
-            entity.ToTable("PHIEUNHAP");
+            // CORRECTED: Added HasTrigger configuration
+            entity.ToTable("PHIEUNHAP", tb => tb.HasTrigger("TG_CAPNHATTONGTIEN_PN"));
 
             entity.Property(e => e.Mapn).HasColumnName("MAPN");
             entity.Property(e => e.Matk).HasColumnName("MATK");
@@ -228,7 +242,12 @@ public partial class ThuVienDbContext : DbContext
         {
             entity.HasKey(e => e.Mapt).HasName("PK__PHIEUTRA__603F61D4A5F39CB6");
 
-            entity.ToTable("PHIEUTRA");
+            // CORRECTED: Added HasTrigger configuration
+            entity.ToTable("PHIEUTRA", tb =>
+            {
+                tb.HasTrigger("TG_CAPNHATTRANGTHAI_PM");
+                tb.HasTrigger("TG_CAPNHATTIENPHAT_PT");
+            });
 
             entity.Property(e => e.Mapt).HasColumnName("MAPT");
             entity.Property(e => e.Mapm).HasColumnName("MAPM");
@@ -256,7 +275,8 @@ public partial class ThuVienDbContext : DbContext
         {
             entity.HasKey(e => e.Masach).HasName("PK__SACH__3FC48E4CC7BFDFD1");
 
-            entity.ToTable("SACH");
+            // CORRECTED: Added HasTrigger configuration
+            entity.ToTable("SACH", tb => tb.HasTrigger("TG_TRANGTHAI_SACH"));
 
             entity.Property(e => e.Masach).HasColumnName("MASACH");
             entity.Property(e => e.Giamuon)
@@ -377,7 +397,8 @@ public partial class ThuVienDbContext : DbContext
         {
             entity.HasKey(e => e.Matl).HasName("PK__THANHLY__60237217F52A330B");
 
-            entity.ToTable("THANHLY");
+            // CORRECTED: Added HasTrigger configuration
+            entity.ToTable("THANHLY", tb => tb.HasTrigger("TG_CAPNHATTONGTIEN_TL"));
 
             entity.Property(e => e.Matl).HasColumnName("MATL");
             entity.Property(e => e.Matk).HasColumnName("MATK");

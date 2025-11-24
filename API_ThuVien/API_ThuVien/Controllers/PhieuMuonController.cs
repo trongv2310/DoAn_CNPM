@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using API_ThuVien.Models;
-using API_ThuVien.DTO; // Using namespace DTO
+using API_ThuVien.DTO;
 using System.Linq;
 using System.Threading.Tasks;
 using System;
@@ -38,11 +38,11 @@ namespace API_ThuVien.Controllers
             {
                 try
                 {
-                    // Tìm sinh viên dựa trên Mã Tài Khoản gửi lên
+                    // Tìm sinh viên
                     var sinhVien = await _context.Sinhviens.FirstOrDefaultAsync(sv => sv.Mataikhoan == request.MaTaiKhoan);
                     if (sinhVien == null) return NotFound(new { success = false, message = "Không tìm thấy thông tin sinh viên." });
 
-                    // 2. KIỂM TRA TỒN KHO
+                    // 2. KIỂM TRA VÀ TRỪ TỒN KHO (ĐỂ GIỮ CHỖ SÁCH)
                     foreach (var item in request.SachMuon)
                     {
                         var sach = await _context.Saches.FindAsync(item.MaSach);
@@ -51,13 +51,16 @@ namespace API_ThuVien.Controllers
                         if (sach.Soluongton < item.SoLuong)
                             throw new Exception($"Sách '{sach.Tensach}' không đủ số lượng (Còn: {sach.Soluongton}).");
 
-                        // Trừ kho (Trigger DB cũng làm việc này, nhưng trừ ở đây để cập nhật trạng thái ngay)
+                        // Trừ kho ngay khi đặt để giữ sách
                         sach.Soluongton -= item.SoLuong;
-                        if (sach.Soluongton == 0) sach.Trangthai = "Đã hết";
+
+                        // LƯU Ý: KHÔNG CẦN SET sach.Trangthai THỦ CÔNG
+                        // Trigger 'TG_TRANGTHAI_SACH' trong SQL sẽ tự động làm việc này khi Soluongton thay đổi.
+
+                        _context.Saches.Update(sach);
                     }
 
-                    // 3. TẠO PHIẾU MƯỢN
-                    // Lấy tạm 1 thủ thư mặc định để gán (vì mượn online chưa ai duyệt ngay)
+                    // 3. TẠO PHIẾU MƯỢN (TRẠNG THÁI CHỜ DUYỆT)
                     var defaultThuThu = await _context.Thuthus.FirstOrDefaultAsync();
                     var newPhieuMuon = new Phieumuon
                     {
@@ -65,11 +68,11 @@ namespace API_ThuVien.Controllers
                         Matt = defaultThuThu?.Matt ?? 1,
                         Ngaylapphieumuon = ngayHienTai,
                         Hantra = hanTra,
-                        Trangthai = "Chờ duyệt"
+                        Trangthai = "Chờ duyệt" // Trạng thái ban đầu
                     };
 
                     _context.Phieumuons.Add(newPhieuMuon);
-                    await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync(); // Lưu để lấy Mapm
 
                     // 4. TẠO CHI TIẾT
                     foreach (var item in request.SachMuon)
@@ -88,7 +91,12 @@ namespace API_ThuVien.Controllers
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    return Ok(new { success = true, message = "Gửi yêu cầu thành công.", maPhieuMuon = newPhieuMuon.Mapm });
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Gửi yêu cầu thành công. Vui lòng chờ thủ thư duyệt.",
+                        maPhieuMuon = newPhieuMuon.Mapm
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -98,16 +106,49 @@ namespace API_ThuVien.Controllers
             }
         }
 
-        // --- ENDPOINT 2: Lịch sử mượn (Fix lỗi Tủ Sách trống) ---
+        // --- ENDPOINT 2: Thủ thư duyệt yêu cầu ---
+        [HttpPost("approve/{mapm}")]
+        public async Task<IActionResult> ApproveBorrowRequest(int mapm, [FromQuery] int maThuThuDuyet)
+        {
+            using (var transaction = await _context.Database.BeginTransactionAsync())
+            {
+                try
+                {
+                    var phieuMuon = await _context.Phieumuons.FindAsync(mapm);
+                    if (phieuMuon == null) return NotFound(new { message = "Không tìm thấy phiếu mượn." });
+
+                    if (phieuMuon.Trangthai != "Chờ duyệt")
+                        return BadRequest(new { message = "Phiếu này không ở trạng thái chờ duyệt." });
+
+                    // Cập nhật trạng thái sang Đang mượn
+                    phieuMuon.Trangthai = "Đang mượn";
+                    phieuMuon.Matt = maThuThuDuyet;
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return Ok(new { message = "Duyệt phiếu thành công." });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    return StatusCode(500, new { message = $"Lỗi: {ex.Message}" });
+                }
+            }
+        }
+
+        // --- ENDPOINT 3: Lịch sử mượn (QUAN TRỌNG CHO APP) ---
         [HttpGet("History/{maTaiKhoan}")]
         public async Task<IActionResult> GetLichSuMuon(int maTaiKhoan)
         {
+            // 1. Tìm sinh viên
             var sv = await _context.Sinhviens.FirstOrDefaultAsync(s => s.Mataikhoan == maTaiKhoan);
             if (sv == null) return NotFound("Không tìm thấy sinh viên");
 
+            // 2. Lấy danh sách phiếu mượn (BỎ Include Phieutras để code nhẹ hơn)
             var listPhieuMuon = await _context.Phieumuons
-                .Include(pm => pm.Chitietphieumuons).ThenInclude(ct => ct.MasachNavigation)
-                .Include(pm => pm.Phieutras).ThenInclude(pt => pt.Chitietphieutras)
+                .Include(pm => pm.Chitietphieumuons)
+                    .ThenInclude(ct => ct.MasachNavigation)
                 .Where(pm => pm.Masv == sv.Masv)
                 .OrderByDescending(pm => pm.Ngaylapphieumuon)
                 .ToListAsync();
@@ -116,20 +157,25 @@ namespace API_ThuVien.Controllers
 
             foreach (var pm in listPhieuMuon)
             {
-                double tienPhatPhieu = pm.Phieutras.Sum(pt => pt.Tongtienphat ?? 0);
+                // --- SỬA ĐOẠN NÀY: TÍNH TỔNG TIỀN PHẠT TRỰC TIẾP TỪ DB ---
+                // Tìm tất cả phiếu trả của phiếu mượn này và cộng tổng tiền phạt lại
+                double tongTienPhat = await _context.Phieutras
+                    .Where(pt => pt.Mapm == pm.Mapm)
+                    .SumAsync(pt => pt.Tongtienphat ?? 0);
+                // ---------------------------------------------------------
 
                 foreach (var ct in pm.Chitietphieumuons)
                 {
-                    DateOnly hanTraSach = ct.Hantra ?? pm.Hantra;
+                    // Logic tính trạng thái (Giữ nguyên hoặc tinh chỉnh)
+                    // Nếu DB đã ghi Quá hạn thì ưu tiên hiển thị Quá hạn
+                    string status = pm.Trangthai;
 
-                    // Logic tính trạng thái hiển thị
-                    int soLuongDaTra = pm.Phieutras.SelectMany(pt => pt.Chitietphieutras)
-                        .Where(t => t.Masach == ct.Masach).Sum(t => t.Soluongtra ?? 0);
-
-                    string status = "Đang mượn";
-                    if (pm.Trangthai == "Chờ duyệt") status = "Chờ duyệt";
-                    else if (soLuongDaTra >= ct.Soluong) status = "Đã trả";
-                    else if (hanTraSach < DateOnly.FromDateTime(DateTime.Now)) status = "Quá hạn";
+                    // Nếu muốn logic hiển thị thông minh hơn:
+                    if (status == "Đang mượn")
+                    {
+                        DateOnly hanTra = ct.Hantra ?? pm.Hantra;
+                        if (hanTra < DateOnly.FromDateTime(DateTime.Now)) status = "Quá hạn";
+                    }
 
                     result.Add(new LichSuMuonDto
                     {
@@ -139,16 +185,21 @@ namespace API_ThuVien.Controllers
                         HinhAnh = ct.MasachNavigation.Hinhanh,
                         GiaMuon = ct.MasachNavigation.Giamuon,
                         NgayMuon = pm.Ngaylapphieumuon.ToDateTime(TimeOnly.MinValue),
-                        HanTra = hanTraSach.ToDateTime(TimeOnly.MinValue),
+                        HanTra = pm.Hantra.ToDateTime(TimeOnly.MinValue),
+
+                        // Gán trạng thái đã xử lý
                         TrangThai = status,
-                        TienPhat = tienPhatPhieu
+
+                        // Gán tổng tiền phạt vừa tính được
+                        TienPhat = tongTienPhat
                     });
                 }
             }
+
             return Ok(result);
         }
 
-        // --- ENDPOINT 3: Gia hạn sách ---
+        // --- ENDPOINT 4: Gia hạn sách ---
         [HttpPost("Extend/{mapm}")]
         public async Task<IActionResult> ExtendLoan(int mapm, [FromBody] ExtendRequestDto request)
         {
@@ -161,10 +212,10 @@ namespace API_ThuVien.Controllers
             DateOnly hanTraMoi = DateOnly.FromDateTime(request.NgayHenTraMoi);
 
             if (hanTraMoi <= hanTraCu)
-                return BadRequest(new { success = false, message = "Ngày gia hạn không hợp lệ." });
+                return BadRequest(new { success = false, message = "Ngày gia hạn phải sau hạn trả cũ." });
 
             if ((chiTiet.Solangiahan ?? 0) >= 2)
-                return BadRequest(new { success = false, message = "Đã hết lượt gia hạn." });
+                return BadRequest(new { success = false, message = "Đã hết lượt gia hạn (Tối đa 2 lần)." });
 
             chiTiet.Hantra = hanTraMoi;
             chiTiet.Solangiahan = (chiTiet.Solangiahan ?? 0) + 1;

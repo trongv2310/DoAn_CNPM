@@ -48,44 +48,42 @@ class _TabTuSachState extends State<TabTuSach> {
     ) ?? false;
 
     if (confirm) {
-      bool success = await _apiService.traSach(maPhieu, maSach);
-      if (success) {
+      // Gọi API trả sách
+      final result = await _apiService.traSach(maPhieu, maSach);
+
+      // Kiểm tra kết quả trả về (Map)
+      if (result['success'] == true) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Trả sách thành công!"), backgroundColor: Colors.green));
-        _handleRefresh();
+        _handleRefresh(); // Tải lại danh sách
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Lỗi khi trả sách."), backgroundColor: Colors.red));
+        String msg = result['message'] ?? "Lỗi khi trả sách";
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
       }
     }
   }
 
-  // --- HÀM XỬ LÝ GIA HẠN SÁCH (CÓ CHỌN NGÀY) ---
+  // --- HÀM XỬ LÝ GIA HẠN SÁCH ---
   void _handleGiaHan(BorrowedBookHistory item) async {
-    // 1. Xác định ngày hạn trả hiện tại
     DateTime currentDueDate;
     try {
-      // Thử parse ngày từ chuỗi (định dạng yyyy-MM-dd từ API)
       currentDueDate = DateTime.parse(item.hanTra);
     } catch (e) {
-      // Nếu lỗi format, dùng ngày hiện tại làm mốc
       currentDueDate = DateTime.now();
     }
 
-    // 2. Hiển thị lịch để chọn ngày
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: currentDueDate.add(const Duration(days: 7)), // Mặc định gợi ý cộng thêm 7 ngày
-      firstDate: currentDueDate.add(const Duration(days: 1)),   // Phải chọn ngày sau hạn cũ ít nhất 1 ngày
-      lastDate: currentDueDate.add(const Duration(days: 30)),   // Giới hạn tối đa gia hạn thêm 30 ngày
+      initialDate: currentDueDate.add(const Duration(days: 7)),
+      firstDate: currentDueDate.add(const Duration(days: 1)),
+      lastDate: currentDueDate.add(const Duration(days: 30)),
       helpText: "CHỌN NGÀY HẸN TRẢ MỚI",
       confirmText: "GIA HẠN",
       cancelText: "HỦY",
     );
 
-    // 3. Nếu người dùng đã chọn ngày và bấm OK
     if (pickedDate != null) {
-      // Gọi API gia hạn (gửi kèm mã sách)
       final result = await _apiService.giaHanSach(item.maPhieu, item.maSach, pickedDate);
 
       if (!mounted) return;
@@ -94,7 +92,7 @@ class _TabTuSachState extends State<TabTuSach> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result['message']), backgroundColor: Colors.green),
         );
-        _handleRefresh(); // Tải lại danh sách
+        _handleRefresh();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result['message'] ?? "Lỗi gia hạn"), backgroundColor: Colors.red),
@@ -176,16 +174,15 @@ class _TabTuSachState extends State<TabTuSach> {
     }
   }
 
-  // --- CẬP NHẬT MÀU SẮC CHO CÁC TRẠNG THÁI MỚI ---
   Color _getStatusColor(String status) {
     switch (status) {
       case "Chờ duyệt": return Colors.orange;
       case "Đang mượn": return Colors.blue;
       case "Đã trả": return Colors.green;
       case "Quá hạn": return Colors.red;
-      case "Thiếu": return Colors.purple; // Màu cho trạng thái Thiếu
-      case "Chưa trả": return Colors.purple; // Màu cho trạng thái Chưa trả
-      case "Quá hạn và Thiếu": return Colors.deepOrange; // Màu kết hợp
+      case "Thiếu": return Colors.purple;
+      case "Chưa trả": return Colors.purple;
+      case "Quá hạn và Thiếu": return Colors.deepOrange;
       default: return Colors.grey;
     }
   }
@@ -226,25 +223,30 @@ class _TabTuSachState extends State<TabTuSach> {
             } else {
               final allBooks = snapshot.data!;
 
+              // --- SỬA LOGIC LỌC TẠI ĐÂY ---
+
+              // 1. Hiện tại: Bao gồm cả Quá hạn để người dùng có thể bấm Trả
               final hienTai = allBooks.where((b) =>
               b.trangThai == "Chờ duyệt" ||
                   b.trangThai == "Đang mượn" ||
-                  b.trangThai == "Thiếu" || // Hiển thị cả sách "Thiếu" ở tab Hiện Tại
-                  b.trangThai == "Chưa trả"
+                  b.trangThai == "Thiếu" ||
+                  b.trangThai == "Chưa trả" ||
+                  b.trangThai == "Quá hạn" ||         // <--- ĐƯA QUÁ HẠN VÀO ĐÂY
+                  b.trangThai == "Quá hạn và Thiếu"   // <--- ĐƯA VÀO ĐÂY
               ).toList();
 
+              // 2. Lịch sử: Chỉ chứa những gì đã xong hoàn toàn (Đã trả hoặc Từ chối)
               final lichSu = allBooks.where((b) =>
               b.trangThai == "Đã trả" ||
-                  b.trangThai == "Quá hạn" ||
-                  b.trangThai == "Quá hạn và Thiếu"
+                  b.trangThai == "Từ chối"
               ).toList();
 
               final viPham = allBooks.where((b) => b.tienPhat > 0).toList();
 
               return TabBarView(
                 children: [
-                  RefreshIndicator(onRefresh: _handleRefresh, child: _buildListBooks(hienTai)),
-                  RefreshIndicator(onRefresh: _handleRefresh, child: _buildListBooks(lichSu)),
+                  RefreshIndicator(onRefresh: _handleRefresh, child: _buildListBooks(hienTai, isCurrent: true)),
+                  RefreshIndicator(onRefresh: _handleRefresh, child: _buildListBooks(lichSu, isCurrent: false)),
                   RefreshIndicator(onRefresh: _handleRefresh, child: _buildFineList(viPham)),
                 ],
               );
@@ -256,7 +258,7 @@ class _TabTuSachState extends State<TabTuSach> {
   }
 
   // --- WIDGET DANH SÁCH SÁCH ---
-  Widget _buildListBooks(List<BorrowedBookHistory> books) {
+  Widget _buildListBooks(List<BorrowedBookHistory> books, {required bool isCurrent}) {
     if (books.isEmpty) {
       return ListView(children: const [SizedBox(height: 200), Center(child: Text("Danh sách trống", style: TextStyle(color: Colors.grey)))]);
     }
@@ -326,44 +328,36 @@ class _TabTuSachState extends State<TabTuSach> {
                               ),
                             ),
 
-                            // --- CẬP NHẬT NÚT BẤM ĐỂ XỬ LÝ TRƯỜNG HỢP "THIẾU" ---
-                            if (item.trangThai == "Đang mượn" || item.trangThai == "Thiếu" || item.trangThai == "Chưa trả")
+                            // --- NÚT THAO TÁC ---
+                            // 1. Nếu đang mượn -> Hiện Gia Hạn + Trả
+                            if (isCurrent && (item.trangThai == "Đang mượn" || item.trangThai == "Thiếu" || item.trangThai == "Chưa trả"))
                               Row(
                                 children: [
-                                  // Nút Gia Hạn
                                   SizedBox(
                                     height: 30,
                                     child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.orange,
-                                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                                          minimumSize: const Size(60, 30)
-                                      ),
+                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: const Size(60, 30)),
                                       onPressed: () => _handleGiaHan(item),
                                       child: const Text("Gia hạn", style: TextStyle(fontSize: 11, color: Colors.white)),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  // Nút Trả
                                   SizedBox(
                                     height: 30,
                                     child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green,
-                                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                                          minimumSize: const Size(60, 30)
-                                      ),
+                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: const Size(60, 30)),
                                       onPressed: () => _handleTraSach(item.maPhieu, item.maSach),
                                       child: const Text("Trả", style: TextStyle(fontSize: 11, color: Colors.white)),
                                     ),
                                   ),
                                 ],
                               )
-                            else if (item.trangThai == "Quá hạn" || item.trangThai == "Quá hạn và Thiếu")
+                            // 2. Nếu quá hạn -> Chỉ hiện nút Trả (Màu đỏ cảnh báo)
+                            else if (isCurrent && (item.trangThai == "Quá hạn" || item.trangThai == "Quá hạn và Thiếu"))
                               SizedBox(
                                 height: 30,
                                 child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(horizontal: 12)),
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(horizontal: 12)),
                                   onPressed: () => _handleTraSach(item.maPhieu, item.maSach),
                                   child: const Text("Trả Sách", style: TextStyle(fontSize: 11, color: Colors.white)),
                                 ),
@@ -383,21 +377,15 @@ class _TabTuSachState extends State<TabTuSach> {
   }
 
   Widget _buildFineList(List<BorrowedBookHistory> books) {
-    if (books.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.thumb_up_alt_outlined, size: 60, color: Colors.green[300]),
-            const SizedBox(height: 10),
-            const Text("Tuyệt vời! Bạn không có phiếu phạt nào.", style: TextStyle(color: Colors.grey)),
-          ],
-        ),
-      );
-    }
+    if (books.isEmpty) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.thumb_up_alt_outlined, size: 60, color: Colors.green[300]), SizedBox(height: 10), const Text("Tuyệt vời! Bạn không có phiếu phạt nào.", style: TextStyle(color: Colors.grey))]));
 
     final currencyFormat = NumberFormat("#,##0", "vi_VN");
-    double totalFine = books.fold(0, (sum, item) => sum + item.tienPhat);
+    // Gom nhóm theo Mã Phiếu để không cộng trùng tiền phạt
+    final uniqueFines = <int, double>{};
+    for (var book in books) {
+      uniqueFines[book.maPhieu] = book.tienPhat;
+    }
+    double totalFine = uniqueFines.values.fold(0, (sum, val) => sum + val);
 
     return Column(
       children: [
@@ -425,7 +413,7 @@ class _TabTuSachState extends State<TabTuSach> {
                 child: ListTile(
                   leading: const CircleAvatar(backgroundColor: Colors.redAccent, child: Icon(Icons.warning_amber_rounded, color: Colors.white)),
                   title: Text(item.tenSach, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text("Phiếu #${item.maPhieu} - Hạn trả: ${_formatDate(item.hanTra)}"),
+                  subtitle: Text("Phiếu #${item.maPhieu} - Hạn: ${_formatDate(item.hanTra)}"),
                   trailing: Text("${currencyFormat.format(item.tienPhat)} đ", style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
               );

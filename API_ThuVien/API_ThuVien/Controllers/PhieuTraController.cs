@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using API_ThuVien.Models;
-using API_ThuVien.DTO;
 
 namespace API_ThuVien.Controllers
 {
@@ -16,6 +15,12 @@ namespace API_ThuVien.Controllers
             _context = context;
         }
 
+        public class TraSachDto
+        {
+            public int MaPhieuMuon { get; set; }
+            public int MaSach { get; set; }
+        }
+
         [HttpPost]
         public async Task<IActionResult> TraSach([FromBody] TraSachDto request)
         {
@@ -23,24 +28,36 @@ namespace API_ThuVien.Controllers
             {
                 try
                 {
+                    // 1. Lấy phiếu mượn
                     var pm = await _context.Phieumuons.FindAsync(request.MaPhieuMuon);
-                    if (pm == null) return NotFound(new { message = "Phiếu mượn không tồn tại" });
+                    if (pm == null) return NotFound(new { message = "Phiếu không tồn tại" });
 
                     var ngayTra = DateOnly.FromDateTime(DateTime.Now);
                     bool isQuaHan = ngayTra > pm.Hantra;
 
-                    // 1. Tạo Phiếu Trả
+                    // --- BƯỚC QUAN TRỌNG CHO TRIGGER ---
+                    // Nếu quá hạn, phải set trạng thái thành "Quá hạn" TRƯỚC KHI thêm chi tiết trả
+                    // để Trigger tính tiền phạt (vì trigger check trạng thái PM.TRANGTHAI)
+                    if (isQuaHan)
+                    {
+                        pm.Trangthai = "Quá hạn";
+                        _context.Phieumuons.Update(pm);
+                        await _context.SaveChangesAsync(); // Lưu ngay để DB nhận diện
+                    }
+
+                    // 2. Tạo Phiếu Trả
                     var phieuTra = new Phieutra
                     {
                         Mapm = request.MaPhieuMuon,
-                        Matt = 1, // Mặc định thủ thư ID 1 nhận
+                        Matt = 1,
                         Ngaylapphieutra = ngayTra,
-                        Songayquahan = isQuaHan ? (ngayTra.DayNumber - pm.Hantra.DayNumber) : 0
+                        Songayquahan = isQuaHan ? (ngayTra.DayNumber - pm.Hantra.DayNumber) : 0,
+                        Tongtienphat = 0 // Để 0, Trigger sẽ tự tính và update lại
                     };
                     _context.Phieutras.Add(phieuTra);
                     await _context.SaveChangesAsync();
 
-                    // 2. Tạo Chi Tiết Trả
+                    // 3. Tạo Chi Tiết Trả
                     var ctMuon = await _context.Chitietphieumuons
                         .FirstOrDefaultAsync(ct => ct.Mapm == request.MaPhieuMuon && ct.Masach == request.MaSach);
 
@@ -55,19 +72,39 @@ namespace API_ThuVien.Controllers
                     };
                     _context.Chitietphieutras.Add(chiTietTra);
 
-                    // Cập nhật trạng thái phiếu mượn nếu cần
-                    if (isQuaHan)
+                    // --- KÍCH HOẠT TRIGGER ---
+                    // Khi lưu dòng này, Trigger TG_CAPNHATTIENPHAT_PT sẽ chạy
+                    // Nó sẽ thấy PM.TRANGTHAI = "Quá hạn" -> Tính tiền -> Update vào PHIEUTRA
+                    await _context.SaveChangesAsync();
+
+                    // 4. Cập nhật trạng thái cuối cùng (Nếu cần)
+                    // Nếu trả hết sách, chuyển thành "Đã trả".
+                    // Ở đây ta đơn giản hóa: Cứ trả là coi như xong -> "Đã trả"
+                    pm.Trangthai = "Đã trả";
+                    _context.Phieumuons.Update(pm);
+
+                    // 5. Cộng tồn kho (Thủ công vì bạn đã xóa trigger kho)
+                    var sach = await _context.Saches.FindAsync(request.MaSach);
+                    if (sach != null)
                     {
-                        pm.Trangthai = "Đã trả"; // Hoặc Logic xử lý quá hạn
-                        _context.Phieumuons.Update(pm);
+                        sach.Soluongton += (ctMuon.Soluong ?? 0);
+                        // Trigger TG_TRANGTHAI_SACH sẽ lo việc set "Có sẵn"
+                        _context.Saches.Update(sach);
                     }
 
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    // Trigger SQL sẽ tự động tính tiền phạt và cộng lại tồn kho
+                    // 6. Lấy lại tiền phạt từ DB để trả về App
+                    await _context.Entry(phieuTra).ReloadAsync();
 
-                    return Ok(new { success = true, message = "Trả sách thành công!" });
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "Trả sách thành công!",
+                        ngayTra = phieuTra.Ngaylapphieutra,
+                        tienPhat = phieuTra.Tongtienphat // Số tiền do trigger tính
+                    });
                 }
                 catch (Exception ex)
                 {

@@ -15,19 +15,33 @@ class BookDetailScreen extends StatefulWidget {
 
 class _BookDetailScreenState extends State<BookDetailScreen> {
   int _quantity = 1;
+  late Sach _currentSach; // Biến lưu thông tin sách mới nhất
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final cart = Provider.of<BorrowCartProvider>(context, listen: false);
-      int currentQty = cart.getQuantity(widget.sach);
-      if (currentQty > 0) {
+    _currentSach = widget.sach; // Khởi tạo bằng dữ liệu truyền vào
+    _refreshBookData(); // Gọi API lấy dữ liệu mới nhất ngay lập tức
+  }
+
+  // Hàm lấy lại dữ liệu sách từ Server
+  Future<void> _refreshBookData() async {
+    try {
+      // Gọi API lấy danh sách sách (hoặc API lấy chi tiết 1 sách nếu có)
+      // Ở đây ta dùng fetchSaches rồi lọc ra cho đơn giản
+      final books = await ApiService().fetchSaches();
+      final updatedBook = books.firstWhere((b) => b.masach == widget.sach.masach, orElse: () => widget.sach);
+
+      if (mounted) {
         setState(() {
-          _quantity = currentQty;
+          _currentSach = updatedBook;
+          _isLoading = false;
         });
       }
-    });
+    } catch (e) {
+      print("Lỗi làm mới sách: $e");
+    }
   }
 
   void _incrementQuantity() {
