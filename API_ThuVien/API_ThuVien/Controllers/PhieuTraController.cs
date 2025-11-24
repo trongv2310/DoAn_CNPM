@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿// File: Controllers/PhieuTraController.cs
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using API_ThuVien.Models;
 
@@ -10,10 +11,7 @@ namespace API_ThuVien.Controllers
     {
         private readonly ThuVienDbContext _context;
 
-        public PhieuTraController(ThuVienDbContext context)
-        {
-            _context = context;
-        }
+        public PhieuTraController(ThuVienDbContext context) { _context = context; }
 
         public class TraSachDto
         {
@@ -28,44 +26,36 @@ namespace API_ThuVien.Controllers
             {
                 try
                 {
-                    // 1. Lấy phiếu mượn và chi tiết sách cần trả
+                    // 1. Lấy phiếu & Chi tiết
                     var pm = await _context.Phieumuons.FindAsync(request.MaPhieuMuon);
-                    if (pm == null) return NotFound(new { message = "Phiếu không tồn tại" });
-
-                    var ctMuon = await _context.Chitietphieumuons
-                        .FirstOrDefaultAsync(ct => ct.Mapm == request.MaPhieuMuon && ct.Masach == request.MaSach);
-
-                    if (ctMuon == null) return BadRequest(new { message = "Sách không có trong phiếu này." });
+                    var ctMuon = await _context.Chitietphieumuons.FirstOrDefaultAsync(ct => ct.Mapm == request.MaPhieuMuon && ct.Masach == request.MaSach);
+                    if (pm == null || ctMuon == null) return BadRequest(new { message = "Dữ liệu không hợp lệ" });
 
                     var ngayTra = DateOnly.FromDateTime(DateTime.Now);
                     DateOnly hanTraChuan = ctMuon.Hantra ?? pm.Hantra;
                     bool isQuaHan = ngayTra > hanTraChuan;
 
-                    // --- BƯỚC 1: BẬT CỜ "QUÁ HẠN" ĐỂ TRIGGER TÍNH TIỀN ---
-                    // Trigger của bạn: WHEN PM.TRANGTHAI LIKE N'%Quá hạn%' -> Tính tiền
+                    // 2. BẬT CỜ QUÁ HẠN ĐỂ TRIGGER HOẠT ĐỘNG
                     if (isQuaHan)
                     {
-                        if (pm.Trangthai != "Quá hạn")
-                        {
-                            pm.Trangthai = "Quá hạn";
-                            _context.Phieumuons.Update(pm);
-                            await _context.SaveChangesAsync(); // Lưu ngay để DB cập nhật trạng thái
-                        }
+                        pm.Trangthai = "Quá hạn";
+                        _context.Phieumuons.Update(pm);
+                        await _context.SaveChangesAsync();
                     }
 
-                    // --- BƯỚC 2: TẠO PHIẾU TRẢ (HEADER) ---
+                    // 3. TẠO PHIẾU TRẢ
                     var phieuTra = new Phieutra
                     {
                         Mapm = request.MaPhieuMuon,
-                        Matt = 1, // ID Thủ thư (nên lấy từ Token)
+                        Matt = 1, // ID Thủ thư demo
                         Ngaylapphieutra = ngayTra,
                         Songayquahan = isQuaHan ? (ngayTra.DayNumber - hanTraChuan.DayNumber) : 0,
-                        Tongtienphat = 0 // Để 0, Trigger sẽ tự update sau
+                        Tongtienphat = 0
                     };
                     _context.Phieutras.Add(phieuTra);
-                    await _context.SaveChangesAsync(); // Lưu để có Mapt
+                    await _context.SaveChangesAsync(); // Có Mapt
 
-                    // --- BƯỚC 3: TẠO CHI TIẾT TRẢ (DETAIL) ---
+                    // 4. TẠO CHI TIẾT TRẢ -> TRIGGER TÍNH TIỀN CHẠY Ở ĐÂY
                     var chiTietTra = new Chitietphieutra
                     {
                         Mapt = phieuTra.Mapt,
@@ -74,59 +64,47 @@ namespace API_ThuVien.Controllers
                         Ngaytra = ngayTra
                     };
                     _context.Chitietphieutras.Add(chiTietTra);
-
-                    // KHI LƯU DÒNG NÀY: Trigger TG_CAPNHATTIENPHAT_PT sẽ chạy
-                    // Nó thấy PM.TRANGTHAI="Quá hạn" => Tính tiền và Update vào PHIEUTRA
                     await _context.SaveChangesAsync();
 
-                    // --- BƯỚC 4: CẬP NHẬT TRẠNG THÁI CUỐI CÙNG ---
+                    // 5. CẬP NHẬT TRẠNG THÁI CUỐI CÙNG CỦA PHIẾU
+                    // Logic: Nếu còn sách nào chưa trả mà đã quá hạn -> Giữ "Quá hạn". Nếu trả hết -> "Đã trả".
 
-                    // Tính tổng sách đã mượn
-                    var tongSoLuongMuon = await _context.Chitietphieumuons
-                        .Where(ct => ct.Mapm == request.MaPhieuMuon)
-                        .SumAsync(ct => ct.Soluong ?? 0);
+                    var allBooks = await _context.Chitietphieumuons.Where(x => x.Mapm == request.MaPhieuMuon).ToListAsync();
+                    bool conSachChuaTra = false;
+                    bool conSachQuaHan = false;
 
-                    // Tính tổng sách đã trả (bao gồm lần này)
-                    var tongSoLuongDaTra = await _context.Chitietphieutras
-                        .Include(ct => ct.MaptNavigation)
-                        .Where(ct => ct.MaptNavigation.Mapm == request.MaPhieuMuon)
-                        .SumAsync(ct => ct.Soluongtra ?? 0);
-
-                    // Nếu đã trả đủ => Set "Đã trả"
-                    if (tongSoLuongDaTra >= tongSoLuongMuon)
+                    foreach (var book in allBooks)
                     {
-                        pm.Trangthai = "Đã trả";
+                        var slTra = await _context.Chitietphieutras
+                            .Include(x => x.MaptNavigation)
+                            .Where(x => x.MaptNavigation.Mapm == request.MaPhieuMuon && x.Masach == book.Masach)
+                            .SumAsync(x => x.Soluongtra ?? 0);
+
+                        if (slTra < (book.Soluong ?? 0))
+                        {
+                            conSachChuaTra = true;
+                            if ((book.Hantra ?? pm.Hantra) < DateOnly.FromDateTime(DateTime.Now)) conSachQuaHan = true;
+                        }
                     }
-                    else
-                    {
-                        // Nếu chưa trả hết:
-                        // Reset về "Đang mượn" để giao diện không bị đỏ lòm nếu người dùng muốn trả sách khác
-                        // Lần trả sau sẽ tự động check lại Quá hạn ở Bước 1 nếu cần
-                        pm.Trangthai = "Đang mượn";
-                    }
+
+                    if (!conSachChuaTra) pm.Trangthai = "Đã trả";
+                    else if (conSachQuaHan) pm.Trangthai = "Quá hạn";
+                    else pm.Trangthai = "Đang mượn";
 
                     _context.Phieumuons.Update(pm);
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    // Reload để lấy số tiền phạt chính xác từ Trigger
+                    // Lấy kết quả tiền phạt trả về
                     _context.ChangeTracker.Clear();
-                    var phieuTraFinal = await _context.Phieutras.FindAsync(phieuTra.Mapt);
+                    var ptFinal = await _context.Phieutras.FindAsync(phieuTra.Mapt);
 
-                    return Ok(new
-                    {
-                        success = true,
-                        message = isQuaHan
-                            ? $"Trả sách thành công (Quá hạn {phieuTra.Songayquahan} ngày). Phạt: {phieuTraFinal?.Tongtienphat ?? 0}đ"
-                            : "Trả sách thành công!",
-                        tienPhat = phieuTraFinal?.Tongtienphat ?? 0,
-                        trangThaiPhieu = pm.Trangthai
-                    });
+                    return Ok(new { success = true, message = "Trả sách thành công!", tienPhat = ptFinal?.Tongtienphat ?? 0 });
                 }
                 catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
-                    return BadRequest(new { success = false, message = "Lỗi: " + ex.Message });
+                    return BadRequest(new { success = false, message = ex.Message });
                 }
             }
         }

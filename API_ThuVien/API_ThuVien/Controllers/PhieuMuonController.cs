@@ -152,14 +152,13 @@ namespace API_ThuVien.Controllers
             }
         }
 
-        // --- ENDPOINT 3: Lịch sử mượn ---
+        // --- SỬA LẠI API LẤY LỊCH SỬ ---
         [HttpGet("History/{maTaiKhoan}")]
         public async Task<IActionResult> GetLichSuMuon(int maTaiKhoan)
         {
             var sv = await _context.Sinhviens.FirstOrDefaultAsync(s => s.Mataikhoan == maTaiKhoan);
             if (sv == null) return NotFound("Không tìm thấy sinh viên");
 
-            // Lấy danh sách phiếu mượn kèm chi tiết
             var listPhieuMuon = await _context.Phieumuons
                 .Include(pm => pm.Chitietphieumuons)
                     .ThenInclude(ct => ct.MasachNavigation)
@@ -168,43 +167,47 @@ namespace API_ThuVien.Controllers
                 .ToListAsync();
 
             var result = new List<LichSuMuonDto>();
+            var today = DateOnly.FromDateTime(DateTime.Now);
 
             foreach (var pm in listPhieuMuon)
             {
-                // Lấy tổng tiền phạt của cả phiếu (nếu có)
+                // Lấy tổng tiền phạt của cả phiếu (nếu có) từ bảng PhieuTra
                 double tongTienPhat = await _context.Phieutras
                     .Where(pt => pt.Mapm == pm.Mapm)
                     .SumAsync(pt => pt.Tongtienphat ?? 0);
 
                 foreach (var ct in pm.Chitietphieumuons)
                 {
-                    // --- LOGIC QUAN TRỌNG: TÍNH TRẠNG THÁI RIÊNG CHO TỪNG CUỐN ---
-
-                    // Tìm xem cuốn sách cụ thể này (ct.Masach) trong phiếu này (pm.Mapm) đã được trả bao nhiêu?
+                    // Tính số lượng đã trả
                     var soLuongDaTra = await _context.Chitietphieutras
                         .Include(ctpt => ctpt.MaptNavigation)
                         .Where(ctpt => ctpt.MaptNavigation.Mapm == pm.Mapm && ctpt.Masach == ct.Masach)
                         .SumAsync(ctpt => ctpt.Soluongtra ?? 0);
 
-                    // Mặc định lấy trạng thái của phiếu
-                    string statusHienThi = pm.Trangthai;
+                    string statusHienThi = pm.Trangthai; // Mặc định lấy trạng thái phiếu cha
 
-                    // Logic ghi đè: Nếu số lượng trả >= số lượng mượn => Sách này ĐÃ TRẢ (dù phiếu có thể chưa xong)
+                    // LOGIC 1: Nếu đã trả đủ -> "Đã trả"
                     if (soLuongDaTra >= (ct.Soluong ?? 0))
                     {
                         statusHienThi = "Đã trả";
                     }
                     else
                     {
-                        // Nếu chưa trả xong cuốn này, kiểm tra xem có quá hạn không
-                        // (Chỉ check quá hạn nếu phiếu chưa bị đánh dấu là "Quá hạn")
-                        if (statusHienThi == "Đang mượn" || statusHienThi == "Chờ duyệt")
+                        // LOGIC 2: Nếu chưa trả -> Kiểm tra hạn
+                        DateOnly hanTraSach = ct.Hantra ?? pm.Hantra;
+
+                        if (statusHienThi == "Chờ duyệt")
                         {
-                            DateOnly hanTra = ct.Hantra ?? pm.Hantra;
-                            if (hanTra < DateOnly.FromDateTime(DateTime.Now))
-                            {
-                                statusHienThi = "Quá hạn";
-                            }
+                            // Giữ nguyên chờ duyệt
+                        }
+                        // Nếu hôm nay > Hạn trả -> Ép thành "Quá hạn" (bất kể phiếu cha ghi gì)
+                        else if (today > hanTraSach)
+                        {
+                            statusHienThi = "Quá hạn";
+                        }
+                        else
+                        {
+                            statusHienThi = "Đang mượn";
                         }
                     }
 
@@ -216,11 +219,8 @@ namespace API_ThuVien.Controllers
                         HinhAnh = ct.MasachNavigation.Hinhanh,
                         GiaMuon = ct.MasachNavigation.Giamuon,
                         NgayMuon = pm.Ngaylapphieumuon.ToDateTime(TimeOnly.MinValue),
-                        HanTra = pm.Hantra.ToDateTime(TimeOnly.MinValue),
-
-                        // Sử dụng trạng thái riêng vừa tính toán
-                        TrangThai = statusHienThi,
-
+                        HanTra = (ct.Hantra ?? pm.Hantra).ToDateTime(TimeOnly.MinValue),
+                        TrangThai = statusHienThi, // Trạng thái đã tính toán lại
                         TienPhat = tongTienPhat
                     });
                 }
@@ -252,6 +252,52 @@ namespace API_ThuVien.Controllers
 
             await _context.SaveChangesAsync();
             return Ok(new { success = true, message = "Gia hạn thành công!" });
+        }
+
+        // DEMO QUÁ HẠN
+        // Gọi API này bằng Postman hoặc Swagger: POST /api/PhieuMuon/reset-demo/{mapm}
+        [HttpPost("reset-demo/{mapm}")]
+        public async Task<IActionResult> ResetDemoData(int mapm)
+        {
+            // 1. Tìm tất cả phiếu trả liên quan đến phiếu mượn này
+            var listPhieuTra = await _context.Phieutras
+                .Where(pt => pt.Mapm == mapm)
+                .ToListAsync();
+
+            if (listPhieuTra.Any())
+            {
+                // Lấy danh sách mã phiếu trả
+                var listMaPT = listPhieuTra.Select(pt => pt.Mapt).ToList();
+
+                // 2. Xóa Chi tiết phiếu trả (Bảng con)
+                var listChiTiet = await _context.Chitietphieutras
+                    .Where(ct => listMaPT.Contains(ct.Mapt))
+                    .ToListAsync();
+                _context.Chitietphieutras.RemoveRange(listChiTiet);
+
+                // 3. Xóa Phiếu trả (Bảng cha)
+                _context.Phieutras.RemoveRange(listPhieuTra);
+            }
+
+            // 4. Cập nhật lại Phiếu Mượn thành "Quá hạn" & Chỉnh hạn trả về quá khứ
+            var pm = await _context.Phieumuons.FindAsync(mapm);
+            if (pm != null)
+            {
+                pm.Trangthai = "Quá hạn";
+                // Set hạn trả lùi về 5 ngày trước để chắc chắn nó quá hạn
+                pm.Hantra = DateOnly.FromDateTime(DateTime.Now.AddDays(-5));
+
+                // Cập nhật luôn hạn trả trong chi tiết phiếu mượn (nếu có)
+                var chiTietMuon = await _context.Chitietphieumuons.Where(ct => ct.Mapm == mapm).ToListAsync();
+                foreach (var item in chiTietMuon)
+                {
+                    item.Hantra = pm.Hantra;
+                    item.Solangiahan = 0; // Reset lượt gia hạn
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = $"Đã reset phiếu mượn {mapm} về trạng thái CHƯA TRẢ và QUÁ HẠN thành công!" });
         }
     }
 }
