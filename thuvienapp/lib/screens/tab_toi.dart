@@ -12,6 +12,9 @@ import 'ThuKho/CheckTonKho.dart';
 import 'ThuKho/LichSuNhapSach.dart';
 import 'ThuKho/BaoCao.dart';
 import 'DoiMatKhau.dart';
+import 'Admin/QuanLyTaiKhoan.dart';
+import 'Admin/NhatKyHeThong.dart';
+import 'Admin/BaoCaoTongHop.dart';
 
 class TabToi extends StatelessWidget {
   final User user;
@@ -20,7 +23,6 @@ class TabToi extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Dùng watch để cập nhật khi UserProvider thay đổi
-    // Nếu provider null (lỗi), fallback về biến user truyền vào
     final userProvider = context.watch<UserProvider>().user ?? user;
 
     return Scaffold(
@@ -41,25 +43,51 @@ class TabToi extends StatelessWidget {
             ),
             const SizedBox(height: 30),
 
+            // === MENU ADMIN (Hiện nếu MaQuyen = 1) ===
+            if (userProvider.maQuyen == 1) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 16, top: 10, bottom: 5),
+                child: Align(alignment: Alignment.centerLeft, child: Text("QUẢN TRỊ HỆ THỐNG", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent))),
+              ),
+              // Đã sửa thành _buildMenuItem
+              _buildMenuItem(context, Icons.people_alt, "Quản Lý Tài Khoản", Colors.blue, () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => UserManagementScreen()));
+              }),
+              _buildMenuItem(context, Icons.history_edu, "Nhật Ký Hệ Thống",
+                  Colors.blueGrey, () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const NhatKyHeThong()));
+                  }),
+
+              // 1.3 Xem báo cáo (MỚI THÊM)
+              _buildMenuItem(context, Icons.analytics, "Xem Báo Cáo Tổng Hợp",
+                  Colors.deepPurple, () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => AdminReportsScreen()));
+                  }),
+              Divider(thickness: 5, color: Colors.grey[100]),
+            ],
+
             // === MENU THỦ KHO (Hiện nếu MaQuyen = 3) ===
             if (userProvider.maQuyen == 3) ...[
               Padding(
                 padding: const EdgeInsets.only(left: 16, top: 10, bottom: 5),
                 child: Align(alignment: Alignment.centerLeft, child: Text("QUẢN LÝ KHO", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange))),
               ),
-              _buildThuKhoItem(context, Icons.add_box, "Nhập Hàng Mới", Colors.green, () {
+              // Đã sửa hết thành _buildMenuItem
+              _buildMenuItem(context, Icons.add_box, "Nhập Hàng Mới", Colors.green, () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => ImportGoodsScreen(user: userProvider)));
               }),
-              _buildThuKhoItem(context, Icons.delete_sweep, "Thanh Lý Sách", Colors.red, () {
+              _buildMenuItem(context, Icons.delete_sweep, "Thanh Lý Sách", Colors.red, () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => LiquidationScreen(user: userProvider)));
               }),
-              _buildThuKhoItem(context, Icons.inventory, "Kiểm Kê Kho", Colors.blue, () {
+              _buildMenuItem(context, Icons.inventory, "Kiểm Kê Kho", Colors.blue, () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryCheckScreen()));
               }),
-              _buildThuKhoItem(context, Icons.history, "Lịch Sử Nhập", Colors.purple, () {
+              _buildMenuItem(context, Icons.history, "Lịch Sử Nhập", Colors.purple, () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => ImportHistoryScreen(user: userProvider)));
               }),
-              _buildThuKhoItem(context, Icons.bar_chart, "Báo Cáo Thu/Chi", Colors.teal, () {
+              _buildMenuItem(context, Icons.bar_chart, "Báo Cáo Thu/Chi", Colors.teal, () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportScreen()));
               }),
               Divider(thickness: 5, color: Colors.grey[100]),
@@ -84,7 +112,6 @@ class TabToi extends StatelessWidget {
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text("Đăng xuất", style: TextStyle(color: Colors.red)),
               onTap: () {
-                // Xóa dữ liệu trong Provider và về màn hình Login
                 context.read<UserProvider>().logout();
                 context.read<BorrowCartProvider>().clear();
                 Navigator.pushAndRemoveUntil(
@@ -100,14 +127,8 @@ class TabToi extends StatelessWidget {
     );
   }
 
-  String _getRoleName(int id) {
-    if(id == 1) return "Admin";
-    if(id == 2) return "Thủ thư";
-    if(id == 3) return "Thủ kho";
-    return "Độc giả";
-  }
-
-  Widget _buildThuKhoItem(BuildContext context, IconData icon, String title, Color color, VoidCallback onTap) {
+  // HÀM NÀY ĐÃ ĐƯỢC ĐỔI TÊN TỪ _buildThuKhoItem THÀNH _buildMenuItem ĐỂ DÙNG CHUNG
+  Widget _buildMenuItem(BuildContext context, IconData icon, String title, Color color, VoidCallback onTap) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),

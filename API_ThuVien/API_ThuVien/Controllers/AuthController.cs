@@ -44,11 +44,24 @@ namespace API_ThuVien.Controllers
             {
                 return Unauthorized(new { message = "Sai tên đăng nhập hoặc mật khẩu!" });
             }
+            if (user != null)
+            {
+                var log = new Nhatkyhoatdong
+                {
+                    Mataikhoan = user.Mataikhoan,
+                    Hanhdong = $"User {user.Tendangnhap} đăng nhập", // Ghi rõ ai đăng nhập
+                    Thoigian = DateTime.Now,
+                    Ghichu = "Đăng nhập từ App Mobile"
+                };
 
+                _context.Nhatkyhoatdongs.Add(log);
+
+                await _context.SaveChangesAsync();
+            }
             // 2. Tìm họ tên người dùng dựa trên quyền
             string hoVaTen = "Người dùng";
             int entityId = 0;
-            // Nếu là Độc giả (Mã quyền 4 - Dựa theo DB của bạn)
+            // Nếu là Độc giả (Mã quyền 4)
             if (user.Maquyen == 4)
             {
                 var sv = await _context.Sinhviens.FirstOrDefaultAsync(s => s.Mataikhoan == user.Mataikhoan);
@@ -60,13 +73,12 @@ namespace API_ThuVien.Controllers
                 var tt = await _context.Thuthus.FirstOrDefaultAsync(t => t.Mataikhoan == user.Mataikhoan);
                 if (tt != null) { hoVaTen = tt.Hovaten; entityId = tt.Matt; }
             }
-            //Nếu là Thủ kho (Mã quyền 3
+            //Nếu là Thủ kho (Mã quyền 3)
             else if (user.Maquyen == 3)
             {
                 var tk = await _context.Thukhos.FirstOrDefaultAsync(k => k.Mataikhoan == user.Mataikhoan);
                 if (tk != null) { hoVaTen = tk.Hovaten; entityId = tk.Matk; }
             }
-            // Nếu là Admin (Mã quyền 1) hoặc Thủ kho (Mã quyền 3) - Tạm thời để tên mặc định hoặc thêm logic tìm bảng NhanVien nếu có
 
             // 3. Trả về kết quả JSON
             return Ok(new
@@ -105,5 +117,7 @@ namespace API_ThuVien.Controllers
 
             return Ok(new { message = "Đổi mật khẩu thành công" });
         }
+
+        
     }
 }

@@ -35,6 +35,8 @@ public partial class ThuVienDbContext : DbContext
     public virtual DbSet<Gopy> Gopies { get; set; }
     public virtual DbSet<Danhgiasach> Danhgiasaches { get; set; }
 
+    public virtual DbSet<Nhatkyhoatdong> Nhatkyhoatdongs { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Server=Dang\\SQLEXPRESS;Database=ThuVienDB;Trusted_Connection=True;TrustServerCertificate=True;");
@@ -535,6 +537,23 @@ public partial class ThuVienDbContext : DbContext
                 .HasForeignKey(d => d.Masv).HasConstraintName("FK_DGS_SV");
         });
 
+        modelBuilder.Entity<Nhatkyhoatdong>(entity =>
+        {
+            entity.HasKey(e => e.Manhatky);
+            entity.ToTable("NHATKYHOATDONG");
+
+            entity.Property(e => e.Manhatky).HasColumnName("MANHATKY");
+            entity.Property(e => e.Mataikhoan).HasColumnName("MATAIKHOAN");
+            entity.Property(e => e.Hanhdong).HasMaxLength(255).HasColumnName("HANHDONG");
+            entity.Property(e => e.Thoigian).HasColumnType("datetime").HasColumnName("THOIGIAN");
+            entity.Property(e => e.Ghichu).HasColumnName("GHICHU");
+
+            entity.HasOne(d => d.MataikhoanNavigation)
+                .WithMany()
+                .HasForeignKey(d => d.Mataikhoan)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_NK_TK");
+        });
         OnModelCreatingPartial(modelBuilder);
     }
 

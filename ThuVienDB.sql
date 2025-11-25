@@ -704,3 +704,67 @@ BEGIN
     VALUES (CAST(@MaPN AS INT), CAST(@MaSach AS INT), @SoLuong, @GiaNhap);
 END;
 GO
+
+-- SP: Thêm Tài Khoản và Người Dùng (Admin)
+GO
+CREATE PROCEDURE SP_ADMIN_THEM_TAIKHOAN
+    @TenDangNhap NVARCHAR(50),
+    @MatKhau NVARCHAR(255),
+    @MaQuyen INT,           -- 1:Admin, 2:Thủ thư, 3:Thủ kho, 4:Độc giả
+    @HoVaTen NVARCHAR(100),
+    @GioiTinh NVARCHAR(5),
+    @NgaySinh DATE,
+    @Sdt VARCHAR(15),
+    @Email VARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @MaTaiKhoan INT;
+    
+    -- 1. Thêm vào bảng TAIKHOAN
+    INSERT INTO TAIKHOAN (TENDANGNHAP, MATKHAU, MAQUYEN)
+    VALUES (@TenDangNhap, @MatKhau, @MaQuyen);
+
+    SET @MaTaiKhoan = SCOPE_IDENTITY(); -- Lấy ID vừa tạo
+
+    -- 2. Thêm vào bảng người dùng tương ứng
+    IF @MaQuyen = 2 -- Thủ thư
+    BEGIN
+        INSERT INTO THUTHU (MATAIKHOAN, HOVATEN, GIOITINH, NGAYSINH, SDT, EMAIL)
+        VALUES (@MaTaiKhoan, @HoVaTen, @GioiTinh, @NgaySinh, @Sdt, @Email);
+    END
+    ELSE IF @MaQuyen = 3 -- Thủ kho
+    BEGIN
+        INSERT INTO THUKHO (MATAIKHOAN, HOVATEN, GIOITINH, NGAYSINH, SDT, EMAIL)
+        VALUES (@MaTaiKhoan, @HoVaTen, @GioiTinh, @NgaySinh, @Sdt, @Email);
+    END
+    ELSE IF @MaQuyen = 4 -- Sinh viên/Độc giả
+    BEGIN
+        INSERT INTO SINHVIEN (MATAIKHOAN, HOVATEN, GIOITINH, NGAYSINH, SDT, EMAIL)
+        VALUES (@MaTaiKhoan, @HoVaTen, @GioiTinh, @NgaySinh, @Sdt, @Email);
+    END
+
+    -- Trả về Mã Tài Khoản để xác nhận thành công
+    SELECT @MaTaiKhoan AS MaTaiKhoan;
+END;
+GO
+
+-- SP: Cập nhật Trạng thái Tài khoản
+GO
+CREATE PROCEDURE SP_ADMIN_CAPNHAT_TRANGTHAI
+    @MaTaiKhoan INT,
+    @TrangThaiMoi NVARCHAR(20) -- N'Hoạt động' hoặc N'Ngừng hoạt động'
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE TAIKHOAN
+    SET TRANGTHAI = @TrangThaiMoi
+    WHERE MATAIKHOAN = @MaTaiKhoan;
+
+    IF @@ROWCOUNT > 0
+        SELECT 1 AS Success;
+    ELSE
+        SELECT 0 AS Success;
+END;
+GO
+
