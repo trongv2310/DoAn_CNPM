@@ -15,23 +15,43 @@ class BookDetailScreen extends StatefulWidget {
 
 class _BookDetailScreenState extends State<BookDetailScreen> {
   int _quantity = 1;
+  late Sach _currentSach; // Biến lưu thông tin sách mới nhất
+  bool _isLoading = true; // Trạng thái đang tải lại dữ liệu
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final cart = Provider.of<BorrowCartProvider>(context, listen: false);
-      int currentQty = cart.getQuantity(widget.sach);
-      if (currentQty > 0) {
+    _currentSach = widget.sach; // Khởi tạo tạm thời bằng dữ liệu cũ
+    _refreshBookData(); // Gọi API lấy dữ liệu mới nhất ngay lập tức
+  }
+
+  // Hàm lấy lại dữ liệu sách từ Server
+  Future<void> _refreshBookData() async {
+    try {
+      // Gọi API lấy danh sách sách mới nhất
+      final books = await ApiService().fetchSaches();
+
+      // Tìm cuốn sách hiện tại trong danh sách mới tải về
+      final updatedBook = books.firstWhere(
+              (b) => b.masach == widget.sach.masach,
+          orElse: () => widget.sach
+      );
+
+      if (mounted) {
         setState(() {
-          _quantity = currentQty;
+          _currentSach = updatedBook; // Cập nhật biến này
+          _isLoading = false;         // Tắt trạng thái loading
         });
       }
-    });
+    } catch (e) {
+      print("Lỗi làm mới sách: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   void _incrementQuantity() {
-    if (_quantity < widget.sach.soluongton) {
+    // Kiểm tra số lượng tồn dựa trên dữ liệu mới nhất (_currentSach)
+    if (_quantity < _currentSach.soluongton) {
       setState(() {
         _quantity++;
       });
@@ -52,7 +72,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
   void _addToCart() {
     final cart = Provider.of<BorrowCartProvider>(context, listen: false);
-    cart.add(widget.sach, _quantity);
+    // Thêm sách với thông tin mới nhất
+    cart.add(_currentSach, _quantity);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("Đã thêm $_quantity cuốn vào phiếu mượn!"), backgroundColor: Colors.green),
     );
@@ -60,7 +81,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    String imageUrl = ApiService.getImageUrl(widget.sach.hinhanh);
+    // Lấy link ảnh từ dữ liệu mới nhất
+    String imageUrl = ApiService.getImageUrl(_currentSach.hinhanh);
 
     return Scaffold(
       appBar: AppBar(
@@ -69,8 +91,17 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black,
+        actions: [
+          // Nút refresh thủ công nếu muốn
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshBookData,
+          )
+        ],
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator()) // Hiển thị loading khi đang cập nhật
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,28 +130,29 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
             ),
             const SizedBox(height: 24),
 
-            // TÊN SÁCH & GIÁ
+            // TÊN SÁCH & GIÁ (Dùng _currentSach)
             Text(
-              widget.sach.tensach,
+              _currentSach.tensach,
               style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, height: 1.2),
             ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Text(
-                  "${widget.sach.giamuon.toStringAsFixed(0)} đ",
+                  "${_currentSach.giamuon.toStringAsFixed(0)} đ",
                   style: const TextStyle(fontSize: 20, color: Colors.redAccent, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: widget.sach.soluongton > 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                    // Kiểm tra tồn kho từ _currentSach
+                    color: _currentSach.soluongton > 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    widget.sach.soluongton > 0 ? "Còn ${widget.sach.soluongton} cuốn" : "Hết hàng",
-                    style: TextStyle(color: widget.sach.soluongton > 0 ? Colors.green : Colors.red, fontWeight: FontWeight.bold),
+                    _currentSach.soluongton > 0 ? "Còn ${_currentSach.soluongton} cuốn" : "Hết hàng",
+                    style: TextStyle(color: _currentSach.soluongton > 0 ? Colors.green : Colors.red, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -130,25 +162,24 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
             const Divider(thickness: 1),
             const SizedBox(height: 10),
 
-            // THÔNG TIN CHI TIẾT
+            // THÔNG TIN CHI TIẾT (Dùng _currentSach)
             Text("Thông tin chi tiết", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800])),
             const SizedBox(height: 10),
 
-            // --- SỬA LỖI Ở ĐÂY: theloai -> theLoai, tennxb (đúng), mota -> moTa ---
-            _buildInfoRow(Icons.category_outlined, "Thể loại", widget.sach.theLoai ?? "Đang cập nhật"),
-            _buildInfoRow(Icons.apartment_outlined, "Nhà xuất bản", widget.sach.tennxb ?? "Đang cập nhật"),
-            _buildInfoRow(Icons.person_outline, "Tác giả", widget.sach.tenTacGia ?? "Đang cập nhật"),
+            _buildInfoRow(Icons.category_outlined, "Thể loại", _currentSach.theLoai ?? "Đang cập nhật"),
+            _buildInfoRow(Icons.apartment_outlined, "Nhà xuất bản", _currentSach.tennxb ?? "Đang cập nhật"),
+            _buildInfoRow(Icons.person_outline, "Tác giả", _currentSach.tenTacGia ?? "Đang cập nhật"),
 
             const SizedBox(height: 20),
 
-            // MÔ TẢ
+            // MÔ TẢ (Dùng _currentSach)
             Text("Mô tả sách", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800])),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8)),
               child: Text(
-                widget.sach.moTa ?? "Nội dung đang được cập nhật...", // Sửa mota -> moTa
+                _currentSach.moTa ?? "Nội dung đang được cập nhật...",
                 style: const TextStyle(fontSize: 15, height: 1.5, color: Colors.black87),
                 textAlign: TextAlign.justify,
               ),
@@ -156,8 +187,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
             const SizedBox(height: 30),
 
-            // NÚT THÊM VÀO GIỎ
-            if (widget.sach.soluongton > 0) ...[
+            // NÚT THÊM VÀO GIỎ (Kiểm tra _currentSach)
+            if (_currentSach.soluongton > 0) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -177,13 +208,13 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
               height: 54,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: widget.sach.soluongton > 0 ? Colors.blueAccent : Colors.grey,
+                  backgroundColor: _currentSach.soluongton > 0 ? Colors.blueAccent : Colors.grey,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 2,
                 ),
-                onPressed: widget.sach.soluongton > 0 ? _addToCart : null,
+                onPressed: _currentSach.soluongton > 0 ? _addToCart : null,
                 child: Text(
-                  widget.sach.soluongton > 0 ? "THÊM VÀO PHIẾU MƯỢN" : "TẠM THỜI HẾT SÁCH",
+                  _currentSach.soluongton > 0 ? "THÊM VÀO PHIẾU MƯỢN" : "TẠM THỜI HẾT SÁCH",
                   style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               ),

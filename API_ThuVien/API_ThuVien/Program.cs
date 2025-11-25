@@ -1,5 +1,7 @@
 ﻿using API_ThuVien.Models; // Đảm bảo tên này đúng với namespace project của bạn
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders; // <-- 1. THÊM THƯ VIỆN NÀY
+using System.IO; // <-- 2. THÊM THƯ VIỆN NÀY
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +29,16 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
+// ==================================================================
+// 3. CẤU HÌNH ĐỂ DÙNG THƯ MỤC 'images' THAY VÌ 'wwwroot'
+// ==================================================================
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "images")), // Trỏ đến thư mục "images" ở gốc
+    RequestPath = "/images" // Đường dẫn truy cập sẽ là: http://.../images/ten_anh.jpg
+});
+// ==================================================================
 app.MapControllers();
 
 app.Run();

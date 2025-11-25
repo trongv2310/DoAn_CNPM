@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart'; // Cần import intl
+import 'package:intl/intl.dart'; // Cần import intl để format ngày
 
-// --- IMPORT CÁC FILE CẦN THIẾT ---
+// --- IMPORT CÁC FILE CẦN THIẾT (Đường dẫn ../.. vì file này nằm trong folder con DocGia) ---
 import '../../models/user.dart';
-import '../../providers/borrow_cart_provider.dart'; // <-- Chứa CartItem, items
-import '../../providers/api_service.dart'; // <-- Chứa SachMuonRequest
-import 'receipt_screen.dart';
+import '../../providers/borrow_cart_provider.dart'; // Chứa CartItem, items
+import '../../providers/api_service.dart'; // Chứa SachMuonRequest, getImageUrl
+import 'receipt_screen.dart'; // Màn hình hóa đơn (cùng thư mục DocGia)
 
 class CartScreen extends StatefulWidget {
   final User user; // Nhận User từ HomeScreen
@@ -38,20 +38,17 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   // Hàm xử lý gửi phiếu mượn
-  // Tham số 'cart' được truyền vào từ nút bấm
   void _handleSubmitRequest(BorrowCartProvider cart) async {
-    // Lỗi 43: Kiểm tra giỏ hàng rỗng
+    // Kiểm tra giỏ hàng rỗng
     if (cart.items.isEmpty) return;
 
     setState(() => _isLoading = true);
 
-    // Lỗi 48, 49: Lưu tạm dữ liệu
-    // Đảm bảo CartItem đã được import từ borrow_cart_provider.dart
+    // 2. Lưu tạm dữ liệu để truyền sang màn hình Hóa Đơn (vì sau đó sẽ xóa giỏ)
     final itemsSnapshot = Map<int, CartItem>.from(cart.items);
     final double totalSnapshot = cart.totalAmount;
 
-    // Lỗi 52: Chuẩn bị dữ liệu gửi đi
-    // Đảm bảo SachMuonRequest đã được import từ api_service.dart
+    // 3. Chuẩn bị dữ liệu gửi đi (List<SachMuonRequest>)
     List<SachMuonRequest> requestList = cart.items.values.map((item) {
       return SachMuonRequest(
         maSach: item.sach.masach,
@@ -59,11 +56,13 @@ class _CartScreenState extends State<CartScreen> {
       );
     }).toList();
 
-    // 4. Gọi API (Dùng hàm muonNhieuSachFull mới cập nhật)
+    // 4. Gọi API
+    // Lưu ý: Dùng user.entityId (MaSV) hoặc user.maTaiKhoan tùy theo Backend yêu cầu
+    // Ở đây mình dùng maTaiKhoan cho đồng bộ với các bước trước
     final result = await ApiService().muonNhieuSachFull(
         widget.user.maTaiKhoan,
         requestList,
-        _selectedDate
+        _selectedDate // Truyền ngày hẹn trả
     );
 
     setState(() => _isLoading = false);
@@ -75,7 +74,7 @@ class _CartScreenState extends State<CartScreen> {
 
       if (mounted) {
         // --- CHUYỂN SANG MÀN HÌNH HÓA ĐƠN ---
-        Navigator.push(
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (context) => ReceiptScreen(
@@ -104,10 +103,7 @@ class _CartScreenState extends State<CartScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = Provider.of<BorrowCartProvider>(context);
-
-    // Lỗi 104: Lấy danh sách item
     final cartItems = cart.items.values.toList();
-
     String dateText = DateFormat('dd/MM/yyyy').format(_selectedDate);
 
     return Scaffold(
@@ -137,7 +133,8 @@ class _CartScreenState extends State<CartScreen> {
               itemCount: cartItems.length,
               itemBuilder: (context, index) {
                 final item = cartItems[index];
-                // Lấy ảnh chuẩn
+
+                // Lấy ảnh chuẩn từ API Service
                 String imageUrl = ApiService.getImageUrl(item.sach.hinhanh);
 
                 return Card(
@@ -168,7 +165,12 @@ class _CartScreenState extends State<CartScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(item.sach.tensach, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
+                              Text(
+                                  item.sach.tensach,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis
+                              ),
                               const SizedBox(height: 4),
                               Text("Giá: ${item.sach.giamuon.toInt()} đ", style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
                             ],

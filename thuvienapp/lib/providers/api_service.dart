@@ -24,10 +24,10 @@ class ApiService {
   static const String baseUrl = "http://10.0.2.2:5008/api";
   static const String imageBaseUrl = "http://10.0.2.2:5008/images";
 
-  // Hàm xử lý link ảnh
   static String getImageUrl(String? imageName) {
     if (imageName == null || imageName.isEmpty) return "";
     if (imageName.startsWith('http')) return imageName;
+    // Ghép link: http://10.0.2.2:5008/images/hp1.jpg
     return "$imageBaseUrl/$imageName";
   }
 
@@ -163,7 +163,7 @@ class ApiService {
     }
   }
 
-  Future<bool> traSach(int maPhieuMuon, int maSach) async {
+  Future<Map<String, dynamic>> traSach(int maPhieuMuon, int maSach) async {
     final url = Uri.parse('$baseUrl/PhieuTra');
     try {
       final response = await http.post(
@@ -171,9 +171,30 @@ class ApiService {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"MaPhieuMuon": maPhieuMuon, "MaSach": maSach}),
       );
-      return response.statusCode == 200;
+
+      // Luôn cố gắng decode JSON trả về
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        // Thành công
+        return {
+          "success": true,
+          "message": data['message'] ?? "Trả sách thành công!",
+          "data": data // Chứa các thông tin phụ như tiền phạt (nếu có)
+        };
+      } else {
+        // Thất bại (Lỗi logic từ server trả về)
+        return {
+          "success": false,
+          "message": data['message'] ?? "Lỗi trả sách từ server"
+        };
+      }
     } catch (e) {
-      return false;
+      // Lỗi kết nối hoặc lỗi code
+      return {
+        "success": false,
+        "message": "Lỗi kết nối: $e"
+      };
     }
   }
 
