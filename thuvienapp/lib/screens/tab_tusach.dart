@@ -38,33 +38,25 @@ class _TabTuSachState extends State<TabTuSach> {
     bool confirm = await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Xác nhận trả sách"),
-        content: const Text("Bạn có chắc muốn trả cuốn sách này không?"),
+        title: const Text("Gửi yêu cầu trả sách?"),
+        content: const Text("Hệ thống sẽ ghi nhận yêu cầu.\nVui lòng mang sách đến quầy để thủ thư xác nhận."),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Hủy")),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Đồng ý")),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Gửi Yêu Cầu")),
         ],
       ),
     ) ?? false;
 
     if (confirm) {
-      // Gọi API trả sách
-      final result = await _apiService.traSach(maPhieu, maSach);
+      // Gọi API yêu cầu trả
+      final result = await _apiService.requestReturnBook(maPhieu, maSach);
 
-      // Kiểm tra kết quả trả về (Map)
       if (!mounted) return;
       if (result['success'] == true) {
-        String msg = "Trả sách thành công!";
-        // Nếu có tiền phạt trả về từ API thì hiển thị
-        if (result['tienPhat'] != null && (result['tienPhat'] as num) > 0) {
-          final tienPhat = NumberFormat("#,##0", "vi_VN").format(result['tienPhat']);
-          msg += " Phạt: $tienPhat đ";
-        }
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
-        _handleRefresh(); // Tải lại danh sách
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']), backgroundColor: Colors.blue));
+        _handleRefresh();
       } else {
-        String msg = result['message'] ?? "Lỗi khi trả sách";
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? "Lỗi"), backgroundColor: Colors.red));
       }
     }
   }

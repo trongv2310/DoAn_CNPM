@@ -154,7 +154,7 @@ CREATE TABLE PHIEUMUON (
     CONSTRAINT CK_PM_Ngay CHECK (NGAYLAPPHIEUMUON <= HANTRA),
     
     -- Ràng buộc trạng thái
-    CONSTRAINT CK_PM_TRANGTHAI CHECK (TRANGTHAI IN (N'Chờ duyệt', N'Đang mượn', N'Đã trả', N'Quá hạn', N'Thiếu', N'Quá hạn và Thiếu', N'Từ chối'))
+    CONSTRAINT CK_PM_TRANGTHAI CHECK (TRANGTHAI IN (N'Chờ duyệt', N'Đang mượn', N'Chờ trả', N'Đã trả', N'Quá hạn', N'Thiếu', N'Quá hạn và Thiếu', N'Từ chối'))
 );
 GO
 
@@ -462,10 +462,6 @@ GO
 
 -- 8. CẬP NHẬT TRẠNG THÁI SÁCH (CÒN/HẾT)
 GO
-
-DROP TRIGGER TG_TRANGTHAI_SACH
-GO 
-
 CREATE TRIGGER TG_TRANGTHAI_SACH
 ON SACH
 AFTER INSERT, UPDATE
