@@ -152,6 +152,32 @@ namespace API_ThuVien.Controllers
             }
         }
 
+        // --- ENDPOINT MỚI: Lấy danh sách phiếu chờ duyệt (Cho Thủ thư) ---
+        [HttpGet("pending")]
+        public async Task<IActionResult> GetPendingRequests()
+        {
+            var list = await _context.Phieumuons
+                .Include(p => p.MasvNavigation) // Lấy tên sinh viên
+                .Include(p => p.Chitietphieumuons)
+                    .ThenInclude(ct => ct.MasachNavigation) // Lấy tên sách
+                .Where(p => p.Trangthai == "Chờ duyệt")
+                .OrderBy(p => p.Ngaylapphieumuon)
+                .Select(p => new
+                {
+                    MaPhieu = p.Mapm,
+                    TenSinhVien = p.MasvNavigation.Hovaten,
+                    NgayMuon = p.Ngaylapphieumuon.ToString("dd/MM/yyyy"),
+                    HanTra = p.Hantra.ToString("dd/MM/yyyy"),
+                    SachMuon = p.Chitietphieumuons.Select(ct => new {
+                        TenSach = ct.MasachNavigation.Tensach,
+                        SoLuong = ct.Soluong
+                    }).ToList()
+                })
+                .ToListAsync();
+
+            return Ok(list);
+        }
+
         // --- SỬA LẠI API LẤY LỊCH SỬ ---
         [HttpGet("History/{maTaiKhoan}")]
         public async Task<IActionResult> GetLichSuMuon(int maTaiKhoan)

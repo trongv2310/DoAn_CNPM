@@ -52,6 +52,55 @@ namespace API_ThuVien.Controllers
             return Ok(list);
         }
 
+        // --- MỚI: API CHO THỦ THƯ TRẢ LỜI CÂU HỎI ---
+
+        // [GET] Lấy tất cả câu hỏi (Cho Thủ thư xem để trả lời)
+        [HttpGet("all-questions")]
+        public async Task<IActionResult> GetAllQuestions()
+        {
+            var list = await _context.Hoidaps
+                .Include(h => h.MasvNavigation) // Join để lấy tên sinh viên
+                .OrderByDescending(h => h.Thoigianhoi)
+                .Select(h => new
+                {
+                    h.Mahoidap,
+                    TenSinhVien = h.MasvNavigation.Hovaten,
+                    h.Cauhoi,
+                    h.Traloi,
+                    h.Trangthai,
+                    ThoiGian = h.Thoigianhoi.HasValue ? h.Thoigianhoi.Value.ToString("dd/MM/yyyy HH:mm") : ""
+                })
+                .ToListAsync();
+            return Ok(list);
+        }
+
+        // Class DTO nhận dữ liệu trả lời
+        public class TraLoiRequest
+        {
+            public int MaHoiDap { get; set; }
+            public int MaThuThu { get; set; }
+            public string NoiDungTraLoi { get; set; }
+        }
+
+        // [POST] Thủ thư gửi câu trả lời
+        [HttpPost("tra-loi")]
+        public async Task<IActionResult> TraLoiCauHoi([FromBody] TraLoiRequest req)
+        {
+            var hd = await _context.Hoidaps.FindAsync(req.MaHoiDap);
+            if (hd == null) return NotFound("Không tìm thấy câu hỏi");
+
+            hd.Traloi = req.NoiDungTraLoi;
+            hd.Matt = req.MaThuThu; // Lưu ID thủ thư đã trả lời
+            hd.Thoigiantraloi = DateTime.Now;
+            hd.Trangthai = "Đã trả lời";
+
+            await _context.SaveChangesAsync();
+            return Ok(new { Message = "Đã gửi câu trả lời thành công" });
+        }
+
+        // ====================================================
+
+
         // ================== 2. GÓP Ý ==================
 
         // Gửi góp ý
