@@ -314,6 +314,19 @@ CREATE TABLE DANHGIASACH (
 );
 GO
 
+-- =========================================================
+-- 20) BẢNG NHẬT KÝ HOẠT ĐỘNG (Bổ sung do thiếu sót khi merge)
+-- =========================================================
+CREATE TABLE NHATKYHOATDONG (
+    MANHATKY INT IDENTITY(1,1) PRIMARY KEY,
+    MATAIKHOAN INT NOT NULL,
+    HANHDONG NVARCHAR(255) NOT NULL,
+    THOIGIAN DATETIME DEFAULT GETDATE(),
+    GHICHU NVARCHAR(MAX),
+
+    CONSTRAINT FK_NK_TK FOREIGN KEY (MATAIKHOAN) REFERENCES TAIKHOAN(MATAIKHOAN)
+);
+GO
 
 -- =====================================================================================================================
 -- ||                                               TRIGGER (HỢP NHẤT)                                                ||
