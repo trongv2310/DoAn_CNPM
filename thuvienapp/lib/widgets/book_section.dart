@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/sach.dart';
 import '../models/user.dart';
-import '../providers/api_service.dart'; // <--- 1. Import để lấy ảnh
-import '../screens/ChiTietSach.dart';   // <--- 2. Import màn hình chi tiết
+import '../providers/api_service.dart';
+import '../screens/ChiTietSach.dart';
 
 class BookSection extends StatelessWidget {
   final String title;
@@ -34,7 +34,7 @@ class BookSection extends StatelessWidget {
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               TextButton(
-                onPressed: onSeeMore, // <--- 3. Gán hàm xem thêm
+                onPressed: onSeeMore,
                 child: const Text('Xem thêm'),
               ),
             ],
@@ -42,7 +42,7 @@ class BookSection extends StatelessWidget {
         ),
         // Danh sách sách cuộn ngang
         SizedBox(
-          height: 240,
+          height: 250, // Tăng chiều cao để chứa thẻ sách đẹp hơn
           child: books.isEmpty
               ? const Center(child: Text("Đang cập nhật sách..."))
               : ListView.builder(
@@ -51,11 +51,9 @@ class BookSection extends StatelessWidget {
             itemCount: books.length,
             itemBuilder: (context, index) {
               final sach = books[index];
-
-              // 4. Lấy link ảnh chuẩn từ server
               String imageUrl = ApiService.getImageUrl(sach.hinhanh);
 
-              return GestureDetector( // <--- 5. Bọc để bấm được
+              return GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
@@ -65,44 +63,87 @@ class BookSection extends StatelessWidget {
                   );
                 },
                 child: Container(
-                  width: 140,
-                  margin: const EdgeInsets.only(right: 12),
+                  width: 130, // Giảm chiều rộng để có thể chứa nhiều sách hơn
+                  margin: const EdgeInsets.only(right: 15, bottom: 8), // Thêm margin dưới
+                  decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(color: Colors.grey.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 4)),
+                      ]
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Ảnh bìa sách
                       Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            color: Colors.grey[200], // Màu nền khi đang tải
-                            child: imageUrl.isNotEmpty
-                                ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              errorBuilder: (context, error, stackTrace) =>
-                              const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
-                            )
-                                : Container(
-                              color: Colors.blue[100],
-                              child: const Center(child: Icon(Icons.book, size: 40, color: Colors.blue)),
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                              child: Container(
+                                color: Colors.grey[200],
+                                child: imageUrl.isNotEmpty
+                                    ? Image.network(
+                                  imageUrl,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                  const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                                )
+                                    : Container(
+                                  color: Colors.blue[100],
+                                  child: const Center(child: Icon(Icons.book, size: 40, color: Colors.blue)),
+                                ),
+                              ),
                             ),
-                          ),
+                            // Thẻ Thể loại (Category tag)
+                            if (sach.theLoai != null)
+                              Positioned(
+                                top: 5,
+                                left: 5,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.6),
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: Text(
+                                    sach.theLoai!,
+                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 8),
-                      // Tên sách
-                      Text(
-                        sach.tensach,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                      // Giá tiền
-                      Text(
-                        "${sach.giamuon.toStringAsFixed(0)} đ",
-                        style: const TextStyle(color: Colors.blueGrey, fontSize: 12, fontWeight: FontWeight.w500),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Tên sách
+                            Text(
+                              sach.tensach,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            // Tác giả
+                            Text(
+                              sach.tenTacGia ?? "Không rõ",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 10, color: Colors.grey),
+                            ),
+                            // Giá tiền
+                            Text(
+                              "${sach.giamuon.toStringAsFixed(0)} đ",
+                              style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),

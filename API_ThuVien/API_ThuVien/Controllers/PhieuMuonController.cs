@@ -325,5 +325,167 @@ namespace API_ThuVien.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { message = $"Đã reset phiếu mượn {mapm} về trạng thái CHƯA TRẢ và QUÁ HẠN thành công!" });
         }
+
+        // --- ENDPOINT MỚI: Lấy thống kê nhanh cho Dashboard Thủ thư ---
+        [HttpGet("librarian-stats")]
+        public async Task<IActionResult> GetLibrarianStats()
+        {
+            // 1. Đếm phiếu đang chờ duyệt mượn
+            int choDuyet = await _context.Phieumuons
+                .CountAsync(p => p.Trangthai == "Chờ duyệt");
+
+            // 2. Đếm phiếu ĐANG CÓ YÊU CẦU TRẢ (status = "Chờ trả")
+            int yeuCauTra = await _context.Phieumuons
+                .CountAsync(p => p.Trangthai == "Chờ trả");
+
+            // 3. Đếm câu hỏi chưa trả lời
+            int cauHoiMoi = await _context.Hoidaps
+                .CountAsync(h => h.Trangthai == "Chờ trả lời");
+
+            return Ok(new
+            {
+                ChoDuyet = choDuyet,
+                YeuCauTra = yeuCauTra, // Trả về số lượng yêu cầu trả
+                CauHoiMoi = cauHoiMoi
+            });
+        }
+
+        // --- API 1: ĐỘC GIẢ GỬI YÊU CẦU TRẢ SÁCH ---
+        [HttpPost("request-return")]
+        public async Task<IActionResult> RequestReturn([FromBody] TraSachDto request)
+        {
+            // Tìm phiếu mượn
+            var pm = await _context.Phieumuons.FindAsync(request.MaPhieuMuon);
+            if (pm == null) return NotFound(new { success = false, message = "Không tìm thấy phiếu mượn." });
+
+            // Kiểm tra trạng thái hợp lệ
+            if (pm.Trangthai == "Chờ trả")
+                return BadRequest(new { success = false, message = "Phiếu này đang chờ thủ thư xử lý rồi." });
+
+            if (pm.Trangthai == "Đã trả")
+                return BadRequest(new { success = false, message = "Phiếu này đã hoàn tất." });
+
+            // Cập nhật trạng thái sang "Chờ trả"
+            pm.Trangthai = "Chờ trả";
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Đã gửi yêu cầu trả sách. Vui lòng mang sách đến quầy thủ thư." });
+        }
+
+        // --- API 2: SỬA LẠI API LẤY DANH SÁCH CHO THỦ THƯ (CHỈ LẤY 'CHỜ TRẢ') ---
+        [HttpGet("borrowed-books")]
+        public async Task<IActionResult> GetBorrowedBooksForLibrarian()
+        {
+            var today = DateOnly.FromDateTime(DateTime.Now);
+
+            var list = await _context.Chitietphieumuons
+                .Include(ct => ct.MapmNavigation)
+                    .ThenInclude(pm => pm.MasvNavigation)
+                .Include(ct => ct.MasachNavigation)
+                // [QUAN TRỌNG] Chỉ lấy những phiếu có trạng thái "Chờ trả"
+                .Where(ct => ct.MapmNavigation.Trangthai == "Chờ trả")
+                .Select(ct => new
+                {
+                    MaPhieu = ct.Mapm,
+                    MaSach = ct.Masach,
+                    TenDocGia = ct.MapmNavigation.MasvNavigation.Hovaten,
+                    MaDocGia = $"DG{ct.MapmNavigation.Masv.ToString("D3")}",
+                    TenSach = ct.MasachNavigation.Tensach,
+                    MaSachHienThi = $"S{ct.Masach.ToString("D4")}",
+                    NgayMuon = ct.MapmNavigation.Ngaylapphieumuon,
+                    HanTra = ct.Hantra ?? ct.MapmNavigation.Hantra,
+                    TrangThaiPhieu = ct.MapmNavigation.Trangthai
+                })
+                .ToListAsync();
+
+            var result = list.Select(item =>
+            {
+                int soNgayQuaHan = 0;
+                double phiPhat = 0;
+
+                if (today > item.HanTra)
+                {
+                    soNgayQuaHan = item.HanTra.DayNumber > today.DayNumber ? 0 : today.DayNumber - item.HanTra.DayNumber;
+                    phiPhat = soNgayQuaHan * 2000;
+                }
+
+                return new
+                {
+                    item.MaPhieu,
+                    item.MaSach,
+                    item.TenDocGia,
+                    item.MaDocGia,
+                    item.TenSach,
+                    item.MaSachHienThi,
+                    NgayMuon = item.NgayMuon.ToString("dd/MM/yyyy"),
+                    HanTra = item.HanTra.ToString("dd/MM/yyyy"),
+                    // Hiển thị rõ trạng thái chờ
+                    TrangThai = soNgayQuaHan > 0 ? "Chờ trả (Quá hạn)" : "Chờ trả",
+                    SoNgayQuaHan = soNgayQuaHan,
+                    PhiPhat = phiPhat
+                };
+            }).OrderByDescending(x => x.SoNgayQuaHan).ToList();
+
+            return Ok(result);
+        }
+
+        // --- API 3: Lấy thống kê duyệt mượn (Chờ / Đã duyệt / Từ chối) ---
+        [HttpGet("approval-stats")]
+        public async Task<IActionResult> GetApprovalStats()
+        {
+            // 1. Chờ duyệt
+            int choDuyet = await _context.Phieumuons.CountAsync(p => p.Trangthai == "Chờ duyệt");
+
+            // 2. Từ chối
+            int tuChoi = await _context.Phieumuons.CountAsync(p => p.Trangthai == "Từ chối");
+
+            // 3. Đã duyệt (Bao gồm Đang mượn, Đã trả, Quá hạn, Chờ trả...)
+            // Logic: Tất cả phiếu không phải "Chờ duyệt" và không phải "Từ chối" đều là đã được duyệt chấp thuận
+            int daDuyet = await _context.Phieumuons.CountAsync(p => p.Trangthai != "Chờ duyệt" && p.Trangthai != "Từ chối");
+
+            return Ok(new { ChoDuyet = choDuyet, DaDuyet = daDuyet, TuChoi = tuChoi });
+        }
+
+        // --- API 4: Xem danh sách lịch sử theo loại (approved / rejected) ---
+        [HttpGet("history-by-type")]
+        public async Task<IActionResult> GetHistoryRequests([FromQuery] string type)
+        {
+            var query = _context.Phieumuons
+                .Include(p => p.MasvNavigation)
+                .Include(p => p.Chitietphieumuons).ThenInclude(ct => ct.MasachNavigation)
+                .AsQueryable();
+
+            if (type == "rejected")
+            {
+                query = query.Where(p => p.Trangthai == "Từ chối");
+            }
+            else if (type == "approved")
+            {
+                // Lấy tất cả các trạng thái thể hiện đã được duyệt
+                query = query.Where(p => p.Trangthai != "Chờ duyệt" && p.Trangthai != "Từ chối");
+            }
+            else
+            {
+                return BadRequest("Loại không hợp lệ");
+            }
+
+            var list = await query
+                .OrderByDescending(p => p.Ngaylapphieumuon) // Mới nhất lên đầu
+                .Select(p => new
+                {
+                    MaPhieu = p.Mapm,
+                    TenSinhVien = p.MasvNavigation.Hovaten,
+                    NgayMuon = p.Ngaylapphieumuon.ToString("dd/MM/yyyy"),
+                    HanTra = p.Hantra.ToString("dd/MM/yyyy"),
+                    TrangThai = p.Trangthai,
+                    SachMuon = p.Chitietphieumuons.Select(ct => new {
+                        TenSach = ct.MasachNavigation.Tensach,
+                        SoLuong = ct.Soluong
+                    }).ToList()
+                })
+                .ToListAsync();
+
+            return Ok(list);
+        }
     }
 }

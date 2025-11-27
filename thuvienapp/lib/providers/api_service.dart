@@ -455,4 +455,85 @@ class ApiService {
       return response.statusCode == 200;
     } catch (e) { return false; }
   }
+
+  Future<Map<String, int>> getLibrarianStats() async {
+    final url = Uri.parse('$baseUrl/PhieuMuon/librarian-stats');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'choDuyet': data['choDuyet'] ?? 0,
+          'yeuCauTra': data['yeuCauTra'] ?? 0, // Map đúng key mới từ API
+          'cauHoiMoi': data['cauHoiMoi'] ?? 0,
+        };
+      }
+      return {'choDuyet': 0, 'yeuCauTra': 0, 'cauHoiMoi': 0};
+    } catch (e) {
+      print("Lỗi lấy thống kê: $e");
+      return {'choDuyet': 0, 'yeuCauTra': 0, 'cauHoiMoi': 0};
+    }
+  }
+
+  // Lấy danh sách đang mượn để trả sách
+  Future<List<dynamic>> getBorrowedBooks() async {
+    final url = Uri.parse('$baseUrl/PhieuMuon/borrowed-books');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return [];
+    } catch (e) {
+      print("Lỗi getBorrowedBooks: $e");
+      return [];
+    }
+  }
+
+  // Độc giả gửi yêu cầu trả
+  Future<Map<String, dynamic>> requestReturnBook(int maPhieu, int maSach) async {
+    final url = Uri.parse('$baseUrl/PhieuMuon/request-return');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        // Backend chỉ cần MaPhieuMuon để update trạng thái phiếu
+        body: jsonEncode({"MaPhieuMuon": maPhieu, "MaSach": maSach}),
+      );
+      final data = jsonDecode(response.body);
+      return {"success": response.statusCode == 200, "message": data['message']};
+    } catch (e) {
+      return {"success": false, "message": "Lỗi kết nối: $e"};
+    }
+  }
+
+  // Lấy thống kê duyệt mượn
+  Future<Map<String, int>> getApprovalStats() async {
+    final url = Uri.parse('$baseUrl/PhieuMuon/approval-stats');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'choDuyet': data['ChoDuyet'] ?? 0,
+          'daDuyet': data['DaDuyet'] ?? 0,
+          'tuChoi': data['TuChoi'] ?? 0,
+        };
+      }
+      return {'choDuyet': 0, 'daDuyet': 0, 'tuChoi': 0};
+    } catch (e) {
+      return {'choDuyet': 0, 'daDuyet': 0, 'tuChoi': 0};
+    }
+  }
+
+  // Lấy danh sách lịch sử duyệt (type: 'approved' hoặc 'rejected')
+  Future<List<dynamic>> getHistoryRequests(String type) async {
+    final url = Uri.parse('$baseUrl/PhieuMuon/history-by-type?type=$type');
+    try {
+      final response = await http.get(url);
+      return response.statusCode == 200 ? jsonDecode(response.body) : [];
+    } catch (e) {
+      return [];
+    }
+  }
 }
