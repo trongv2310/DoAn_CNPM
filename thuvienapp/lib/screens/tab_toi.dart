@@ -16,6 +16,9 @@ import 'Admin/QuanLyTaiKhoan.dart';
 import 'Admin/NhatKyHeThong.dart';
 import 'Admin/BaoCaoTongHop.dart';
 
+// --- BỔ SUNG IMPORT THỦ THƯ TẠI ĐÂY ---
+import 'ThuThu/ThuThuHome.dart';
+
 class TabToi extends StatelessWidget {
   final User user;
   const TabToi({super.key, required this.user});
@@ -64,6 +67,30 @@ class TabToi extends StatelessWidget {
                   Colors.deepPurple, () {
                     Navigator.push(context,
                         MaterialPageRoute(builder: (_) => AdminReportsScreen()));
+                  }),
+              Divider(thickness: 5, color: Colors.grey[100]),
+            ],
+
+            // === MENU THỦ THƯ (Hiện nếu MaQuyen = 2) ===
+            // --- ĐOẠN CODE ĐƯỢC THÊM VÀO ---
+            if (userProvider.maQuyen == 2) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 16, top: 10, bottom: 5),
+                child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text("QUẢN LÝ THƯ VIỆN",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue[800]))),
+              ),
+              // Điều hướng đến trang Dashboard riêng của Thủ thư
+              _buildMenuItem(context, Icons.dashboard, "Trang Chủ Thủ Thư",
+                  Colors.blue, () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                LibrarianHomeScreen(user: userProvider)));
                   }),
               Divider(thickness: 5, color: Colors.grey[100]),
             ],

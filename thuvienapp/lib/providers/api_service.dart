@@ -408,4 +408,51 @@ class ApiService {
       return response.statusCode == 200 ? json.decode(response.body) : {};
     } catch (e) { return {}; }
   }
+
+  // ============================================================
+  // 7. CHỨC NĂNG THỦ THƯ (LIBRARIAN)
+  // ============================================================
+
+  // 1. Lấy danh sách phiếu chờ duyệt
+  Future<List<dynamic>> getPendingBorrowRequests() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/PhieuMuon/pending'));
+      return response.statusCode == 200 ? json.decode(response.body) : [];
+    } catch (e) { return []; }
+  }
+
+  // 2. Duyệt phiếu mượn
+  Future<bool> approveRequest(int maPhieu, int maThuThu) async {
+    // API backend đã có sẵn: /PhieuMuon/approve/{mapm}?maThuThuDuyet=...
+    final url = Uri.parse('$baseUrl/PhieuMuon/approve/$maPhieu?maThuThuDuyet=$maThuThu');
+    try {
+      final response = await http.post(url);
+      return response.statusCode == 200;
+    } catch (e) { return false; }
+  }
+
+  // 3. Lấy danh sách câu hỏi hỗ trợ
+  Future<List<dynamic>> getAllQuestions() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/TuongTac/all-questions'));
+      return response.statusCode == 200 ? json.decode(response.body) : [];
+    } catch (e) { return []; }
+  }
+
+  // 4. Trả lời câu hỏi
+  Future<bool> replyQuestion(int maHoiDap, int maThuThu, String answer) async {
+    final url = Uri.parse('$baseUrl/TuongTac/tra-loi');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "MaHoiDap": maHoiDap,
+          "MaThuThu": maThuThu,
+          "NoiDungTraLoi": answer
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) { return false; }
+  }
 }
