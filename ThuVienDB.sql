@@ -353,8 +353,7 @@ GO
 -- Lưu ý: Trigger này sẽ trừ tồn kho ngay khi tạo phiếu (hoặc chi tiết phiếu).
 -- Nếu Backend đã trừ rồi thì trigger này sẽ trừ thêm lần nữa.
 -- Tuy nhiên để đảm bảo tính toàn vẹn dữ liệu mức DB, ta giữ lại và nên bỏ logic trừ ở Backend.
-GO
-DROP TRIGGER IF EXISTS TG_CAPNHATSLTONCUASACH_CTPM
+
 
 
 -- 3. CẬP NHẬT SỐ LƯỢNG TỒN KHI TRẢ
