@@ -131,9 +131,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
                     borderRadius: BorderRadius.circular(10),
-                    image: const DecorationImage(
-                      image: NetworkImage('https://i.ibb.co/C031mGf/main-banner.jpg'),
+                    image: DecorationImage(
+                      // SỬA TẠI ĐÂY: Dùng ApiService để lấy link từ server nội bộ
+                      image: NetworkImage(ApiService.getImageUrl('banner.jpg')),
                       fit: BoxFit.cover,
+                      // Thêm xử lý lỗi nếu ảnh không tải được
+                      onError: (exception, stackTrace) {
+                        print("Lỗi tải banner: $exception");
+                      },
                     ),
                   ),
                 ),

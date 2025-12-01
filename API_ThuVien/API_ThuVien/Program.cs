@@ -1,22 +1,26 @@
-﻿using API_ThuVien.Models; // Đảm bảo tên này đúng với namespace project của bạn
+﻿using API_ThuVien.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.FileProviders; // <-- 1. THÊM THƯ VIỆN NÀY
-using System.IO; // <-- 2. THÊM THƯ VIỆN NÀY
+using Microsoft.Extensions.FileProviders;
+using System.Text.Json.Serialization; // Thư viện xử lý vòng lặp JSON
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ==================================================================
-// 1. ĐĂNG KÝ KẾT NỐI DATABASE (PHẦN BẠN ĐANG THIẾU)
-// ==================================================================
+// 1. ĐĂNG KÝ DATABASE
 builder.Services.AddDbContext<ThuVienDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ThuVienDB")));
 
-// Add services to the container.
-builder.Services.AddControllers();
 
-// 2. Cấu hình Swagger (để hiện giao diện test màu xanh)
+builder.Services.AddControllers().AddJsonOptions(x =>
+    x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
+
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+
+builder.Services.AddSwaggerGen(c =>
+{
+    // Dòng này giúp Swagger phân biệt được các class cùng tên nằm ở thư mục khác nhau
+    c.CustomSchemaIds(type => type.ToString());
+});
 
 var app = builder.Build();
 
@@ -29,16 +33,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
-// ==================================================================
-// 3. CẤU HÌNH ĐỂ DÙNG THƯ MỤC 'images' THAY VÌ 'wwwroot'
-// ==================================================================
+
+// Cấu hình hiển thị ảnh
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(
-        Path.Combine(builder.Environment.ContentRootPath, "images")), // Trỏ đến thư mục "images" ở gốc
-    RequestPath = "/images" // Đường dẫn truy cập sẽ là: http://.../images/ten_anh.jpg
+        Path.Combine(builder.Environment.ContentRootPath, "images")),
+    RequestPath = "/images"
 });
-// ==================================================================
+
 app.MapControllers();
 
 app.Run();
