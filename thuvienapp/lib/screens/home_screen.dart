@@ -38,6 +38,18 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // --- HÀM MỚI: Lấy chữ cái đầu của tên ---
+  String _getAvatarLetter(String fullName) {
+    if (fullName.isEmpty) return "U";
+    // Tách chuỗi tên theo dấu cách
+    List<String> parts = fullName.trim().split(' ');
+    // Lấy từ cuối cùng (Tên) và lấy chữ cái đầu tiên, in hoa
+    if (parts.isNotEmpty && parts.last.isNotEmpty) {
+      return parts.last[0].toUpperCase();
+    }
+    return fullName[0].toUpperCase();
+  }
+
   Widget buildHomeTab() {
     return FutureBuilder<List<Sach>>(
       future: _futureSach,
@@ -52,7 +64,8 @@ class _HomeScreenState extends State<HomeScreen> {
           List<Sach> latestUpdates = allBooks.skip(5).toList();
 
           void showCategories() {
-            final categories = allBooks.map((e) => e.theLoai ?? "Khác").toSet().toList();
+            final categories =
+            allBooks.map((e) => e.theLoai ?? "Khác").toSet().toList();
             showModalBottomSheet(
               context: context,
               builder: (_) => ListView.builder(
@@ -62,8 +75,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                   onTap: () {
                     Navigator.pop(context);
-                    final booksByCat = allBooks.where((b) => b.theLoai == categories[index]).toList();
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => BookListScreen(title: categories[index], books: booksByCat)));
+                    final booksByCat = allBooks
+                        .where((b) => b.theLoai == categories[index])
+                        .toList();
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => BookListScreen(
+                                title: categories[index], books: booksByCat)));
                   },
                 ),
               ),
@@ -71,7 +90,8 @@ class _HomeScreenState extends State<HomeScreen> {
           }
 
           void showAuthors() {
-            final authors = allBooks.map((e) => e.tenTacGia ?? "Chưa rõ").toSet().toList();
+            final authors =
+            allBooks.map((e) => e.tenTacGia ?? "Chưa rõ").toSet().toList();
             showModalBottomSheet(
               context: context,
               builder: (_) => ListView.builder(
@@ -81,8 +101,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: Text(authors[index]),
                   onTap: () {
                     Navigator.pop(context);
-                    final booksByAuthor = allBooks.where((b) => b.tenTacGia == authors[index]).toList();
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => BookListScreen(title: authors[index], books: booksByAuthor)));
+                    final booksByAuthor = allBooks
+                        .where((b) => b.tenTacGia == authors[index])
+                        .toList();
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => BookListScreen(
+                                title: authors[index], books: booksByAuthor)));
                   },
                 ),
               ),
@@ -100,8 +126,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     title: const Text("Giá: Thấp đến Cao"),
                     onTap: () {
                       Navigator.pop(context);
-                      List<Sach> sorted = List.from(allBooks)..sort((a, b) => a.giamuon.compareTo(b.giamuon));
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => BookListScreen(title: "Giá tăng dần", books: sorted)));
+                      List<Sach> sorted = List.from(allBooks)
+                        ..sort((a, b) => a.giamuon.compareTo(b.giamuon));
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => BookListScreen(
+                                  title: "Giá tăng dần", books: sorted)));
                     },
                   ),
                   ListTile(
@@ -109,8 +140,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     title: const Text("Giá: Cao đến Thấp"),
                     onTap: () {
                       Navigator.pop(context);
-                      List<Sach> sorted = List.from(allBooks)..sort((a, b) => b.giamuon.compareTo(a.giamuon));
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => BookListScreen(title: "Giá giảm dần", books: sorted)));
+                      List<Sach> sorted = List.from(allBooks)
+                        ..sort((a, b) => b.giamuon.compareTo(a.giamuon));
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => BookListScreen(
+                                  title: "Giá giảm dần", books: sorted)));
                     },
                   ),
                 ],
@@ -119,7 +155,10 @@ class _HomeScreenState extends State<HomeScreen> {
           }
 
           void showInteraction() {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => InteractionScreen(user: widget.user)));
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => InteractionScreen(user: widget.user)));
           }
 
           return SingleChildScrollView(
@@ -132,10 +171,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.grey[300],
                     borderRadius: BorderRadius.circular(10),
                     image: DecorationImage(
-                      // SỬA TẠI ĐÂY: Dùng ApiService để lấy link từ server nội bộ
                       image: NetworkImage(ApiService.getImageUrl('banner.jpg')),
                       fit: BoxFit.cover,
-                      // Thêm xử lý lỗi nếu ảnh không tải được
                       onError: (exception, stackTrace) {
                         print("Lỗi tải banner: $exception");
                       },
@@ -148,22 +185,29 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildCategoryButton(Icons.list, 'Thể Loại', showCategories),
+                      _buildCategoryButton(
+                          Icons.list, 'Thể Loại', showCategories),
                       _buildCategoryButton(Icons.tune, 'Bộ Lọc', showFilters),
-                      _buildCategoryButton(Icons.lightbulb_outlined, 'Tác Giả', showAuthors),
-                      _buildCategoryButton(Icons.contact_support_outlined, 'Tương Tác', showInteraction),
+                      _buildCategoryButton(
+                          Icons.lightbulb_outlined, 'Tác Giả', showAuthors),
+                      _buildCategoryButton(Icons.contact_support_outlined,
+                          'Tương Tác', showInteraction),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // --- ĐÃ SỬA: XÓA 'user: widget.user' VÌ BOOKSECTION KHÔNG CẦN ---
                 BookSection(
                   title: 'KHUYẾN KHÍCH ĐỌC',
                   books: recommendedBooks,
                   user: widget.user,
                   onSeeMore: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => BookListScreen(title: "Sách Khuyến Khích", books: recommendedBooks)));
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => BookListScreen(
+                                title: "Sách Khuyến Khích",
+                                books: recommendedBooks)));
                   },
                 ),
                 const SizedBox(height: 24),
@@ -173,7 +217,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   books: latestUpdates,
                   user: widget.user,
                   onSeeMore: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => BookListScreen(title: "Mới Cập Nhật", books: latestUpdates)));
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => BookListScreen(
+                                title: "Mới Cập Nhật", books: latestUpdates)));
                   },
                 ),
                 const SizedBox(height: 24),
@@ -193,37 +241,57 @@ class _HomeScreenState extends State<HomeScreen> {
       TabToi(user: widget.user),
     ];
 
+    // Lấy chữ cái để hiển thị
+    String avatarLabel = _getAvatarLetter(widget.user.hoVaTen);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         title: Row(
           children: [
+            // --- SỬA ĐỔI: Thay Icon bằng Text hiển thị chữ cái ---
             Container(
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.withOpacity(0.8), width: 2.5),
+                // Viền màu xanh nhạt
+                border: Border.all(
+                    color: Colors.blueAccent.withOpacity(0.5), width: 2),
               ),
-              child: const CircleAvatar(
-                backgroundColor: Colors.white54,
-                child: Icon(Icons.person, color: Colors.grey),
+              child: CircleAvatar(
+                backgroundColor: Colors.blueAccent, // Nền xanh nổi bật
+                child: Text(
+                  avatarLabel,
+                  style: const TextStyle(
+                    color: Colors.white, // Chữ màu trắng
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
               ),
             ),
+            // ----------------------------------------------------
             const SizedBox(width: 10),
             Expanded(
               child: GestureDetector(
                 onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen()));
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const SearchScreen()));
                 },
                 child: Container(
                   height: 40,
-                  decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(20)),
+                  decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(20)),
                   child: const Row(
                     children: [
                       SizedBox(width: 12),
                       Icon(Icons.search, color: Colors.grey),
                       SizedBox(width: 8),
-                      Text('Tìm Kiếm Truyện...', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                      Text('Tìm Kiếm Truyện...',
+                          style: TextStyle(color: Colors.grey, fontSize: 16)),
                     ],
                   ),
                 ),
@@ -233,9 +301,13 @@ class _HomeScreenState extends State<HomeScreen> {
             Stack(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.shopping_cart_outlined, color: Colors.grey, size: 28),
+                  icon: const Icon(Icons.shopping_cart_outlined,
+                      color: Colors.grey, size: 28),
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => CartScreen(user: widget.user)));
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => CartScreen(user: widget.user)));
                   },
                 ),
                 Positioned(
@@ -246,9 +318,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (cart.itemCount == 0) return const SizedBox.shrink();
                       return Container(
                         padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)),
-                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                        child: Text('${cart.itemCount}', style: const TextStyle(color: Colors.white, fontSize: 10), textAlign: TextAlign.center),
+                        decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10)),
+                        constraints:
+                        const BoxConstraints(minWidth: 16, minHeight: 16),
+                        child: Text('${cart.itemCount}',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 10),
+                            textAlign: TextAlign.center),
                       );
                     },
                   ),
@@ -261,9 +339,12 @@ class _HomeScreenState extends State<HomeScreen> {
       body: widgetOptions.elementAt(_selectedIndex),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.bookmarks_outlined), label: 'Tủ Sách'),
-          BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Truyện'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Tôi'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.bookmarks_outlined), label: 'Tủ Sách'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.menu_book), label: 'Truyện'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline), label: 'Tôi'),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.blueAccent,

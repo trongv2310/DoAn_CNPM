@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Cần import intl để format tiền
+import 'package:intl/intl.dart';
 import '../models/user.dart';
 import '../models/borrowed_book_history.dart';
 import '../providers/api_service.dart';
@@ -33,6 +33,37 @@ class _TabTuSachState extends State<TabTuSach> {
     await _futureHistory;
   }
 
+  // --- HÀM TÍNH TIỀN PHẠT (CẢ THỰC TẾ VÀ TẠM TÍNH) ---
+  // Hàm này đảm bảo hiển thị tiền ngay cả khi Backend chưa tính
+  double _calculateFine(BorrowedBookHistory item) {
+    // 1. Nếu API đã trả về tiền phạt (thường là sách đã trả), dùng luôn
+    if (item.tienPhat > 0) return item.tienPhat;
+
+    // 2. Nếu chưa có tiền phạt từ API, kiểm tra xem có đang quá hạn không
+    // Chỉ tính với sách chưa trả và không phải đang chờ duyệt
+    String status = item.trangThai.toLowerCase();
+    if (status.contains("đã trả") || status.contains("chờ duyệt")) return 0.0;
+
+    try {
+      DateTime hanTra = DateTime.parse(item.hanTra);
+      DateTime now = DateTime.now();
+
+      // Nếu hiện tại > hạn trả
+      if (now.isAfter(hanTra)) {
+        // Tính số ngày quá hạn (làm tròn xuống)
+        int daysLate = now.difference(hanTra).inDays;
+        if (daysLate > 0) {
+          return daysLate * 1000.0; // Phạt 1.000đ / ngày
+        }
+      }
+    } catch (e) {
+      // Lỗi parse ngày thì bỏ qua
+      return 0.0;
+    }
+
+    return 0.0;
+  }
+
   // --- HÀM XỬ LÝ TRẢ SÁCH ---
   void _handleTraSach(int maPhieu, int maSach) async {
     bool confirm = await showDialog(
@@ -48,9 +79,7 @@ class _TabTuSachState extends State<TabTuSach> {
     ) ?? false;
 
     if (confirm) {
-      // Gọi API yêu cầu trả
       final result = await _apiService.requestReturnBook(maPhieu, maSach);
-
       if (!mounted) return;
       if (result['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']), backgroundColor: Colors.blue));
@@ -82,24 +111,21 @@ class _TabTuSachState extends State<TabTuSach> {
 
     if (pickedDate != null) {
       final result = await _apiService.giaHanSach(item.maPhieu, item.maSach, pickedDate);
-
       if (!mounted) return;
-
       if (result['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message']), backgroundColor: Colors.green),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']), backgroundColor: Colors.green));
         _handleRefresh();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? "Lỗi gia hạn"), backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? "Lỗi gia hạn"), backgroundColor: Colors.red));
       }
     }
   }
 
   // --- POPUP CHI TIẾT ---
   void _showTicketDetail(BuildContext context, BorrowedBookHistory item) {
+    // Tính lại tiền phạt để hiển thị trong popup
+    double fine = _calculateFine(item);
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -119,8 +145,8 @@ class _TabTuSachState extends State<TabTuSach> {
             _buildRowDetail("Hạn trả:", _formatDate(item.hanTra)),
             _buildRowDetail("Trạng thái:", item.trangThai, isStatus: true),
 
-            if (item.tienPhat > 0)
-              _buildRowDetail("Tiền phạt:", "${NumberFormat("#,##0").format(item.tienPhat)} đ", isRed: true),
+            if (fine > 0)
+              _buildRowDetail("Tiền phạt:", "${NumberFormat("#,##0").format(fine)} đ", isRed: true),
 
             _buildRowDetail("Giá mượn:", "${item.giaMuon.toInt()} đ"),
 
@@ -171,7 +197,6 @@ class _TabTuSachState extends State<TabTuSach> {
     }
   }
 
-  // Hàm helper để xác định màu dựa trên chuỗi trạng thái (xử lý cả chữ thường/hoa)
   Color _getStatusColor(String status) {
     String s = status.toLowerCase();
     if (s.contains("quá hạn")) return Colors.red;
@@ -217,26 +242,20 @@ class _TabTuSachState extends State<TabTuSach> {
             } else {
               final allBooks = snapshot.data!;
 
-              // --- LOGIC LỌC MỚI (Mạnh mẽ hơn) ---
-
-              // 1. Hiện tại: Bắt tất cả trạng thái CHƯA KẾT THÚC hoặc QUÁ HẠN
+              // 1. Hiện tại: Chưa trả xong hoặc đang quá hạn
               final hienTai = allBooks.where((b) {
                 String s = b.trangThai.toLowerCase();
-                return s.contains("đang mượn") ||
-                    s.contains("chờ duyệt") ||
-                    s.contains("thiếu") ||
-                    s.contains("chưa trả") ||
-                    s.contains("quá hạn"); // Bắt dính mọi chuỗi có chữ "quá hạn"
+                return s.contains("đang mượn") || s.contains("chờ duyệt") || s.contains("thiếu") || s.contains("chờ trả") || s.contains("quá hạn");
               }).toList();
 
-              // 2. Lịch sử: Chỉ những sách ĐÃ TRẢ hoặc TỪ CHỐI
+              // 2. Lịch sử: Đã trả hoặc bị từ chối
               final lichSu = allBooks.where((b) {
                 String s = b.trangThai.toLowerCase();
                 return s.contains("đã trả") || s.contains("từ chối");
               }).toList();
 
-              // 3. Vi Phạm: Đã trả nhưng có tiền phạt
-              final viPham = allBooks.where((b) => b.tienPhat > 0).toList();
+              // 3. Vi Phạm: Có tiền phạt (từ API hoặc do client tự tính)
+              final viPham = allBooks.where((b) => _calculateFine(b) > 0).toList();
 
               return TabBarView(
                 children: [
@@ -265,7 +284,6 @@ class _TabTuSachState extends State<TabTuSach> {
         final item = books[index];
         String imageUrl = ApiService.getImageUrl(item.hinhAnh);
 
-        // Xử lý logic hiển thị màu sắc và icon
         bool isLate = item.trangThai.toLowerCase().contains("quá hạn");
         Color statusColor = _getStatusColor(item.trangThai);
         Color statusBgColor = statusColor.withOpacity(0.1);
@@ -274,14 +292,13 @@ class _TabTuSachState extends State<TabTuSach> {
         if (item.trangThai == "Chờ duyệt") statusIcon = Icons.hourglass_empty;
         else if (item.trangThai == "Đang mượn") statusIcon = Icons.book;
         else if (item.trangThai == "Đã trả") statusIcon = Icons.check_circle;
-        else if (isLate) statusIcon = Icons.warning; // Icon cảnh báo nếu quá hạn
+        else if (isLate) statusIcon = Icons.warning;
 
         return Card(
           elevation: 2,
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
-              // Viền đỏ nếu quá hạn để gây chú ý
               side: isLate ? const BorderSide(color: Colors.red, width: 1.5) : BorderSide.none
           ),
           child: InkWell(
@@ -309,7 +326,6 @@ class _TabTuSachState extends State<TabTuSach> {
                         const SizedBox(height: 4),
                         Text("Mã phiếu: #${item.maPhieu}", style: const TextStyle(fontSize: 12, color: Colors.grey)),
                         const SizedBox(height: 4),
-                        // Hiển thị Hạn trả hoặc Cảnh báo quá hạn
                         Text(
                           isLate
                               ? "ĐÃ QUÁ HẠN: ${_formatDate(item.hanTra)}"
@@ -335,13 +351,9 @@ class _TabTuSachState extends State<TabTuSach> {
                                 ],
                               ),
                             ),
-
-                            // --- NÚT THAO TÁC ---
-                            // Chỉ hiện ở tab Hiện Tại
                             if (isCurrent)
                               Row(
                                 children: [
-                                  // Nút Gia hạn (Chỉ hiện khi chưa quá hạn và chưa trả)
                                   if (!isLate && item.trangThai != "Chờ duyệt")
                                     SizedBox(
                                       height: 30,
@@ -351,16 +363,14 @@ class _TabTuSachState extends State<TabTuSach> {
                                         child: const Text("Gia hạn", style: TextStyle(fontSize: 11, color: Colors.white)),
                                       ),
                                     ),
-
                                   if (!isLate && item.trangThai != "Chờ duyệt") const SizedBox(width: 8),
 
-                                  // Nút Trả (Luôn hiện nếu chưa trả xong, kể cả quá hạn)
+                                  // Nút trả sách
                                   if (item.trangThai != "Chờ duyệt")
                                     SizedBox(
                                       height: 30,
                                       child: ElevatedButton(
                                         style: ElevatedButton.styleFrom(
-                                          // Đổi màu đỏ nếu quá hạn để cảnh báo phạt
                                             backgroundColor: isLate ? Colors.red : Colors.green,
                                             padding: const EdgeInsets.symmetric(horizontal: 8),
                                             minimumSize: const Size(60, 30)
@@ -385,18 +395,23 @@ class _TabTuSachState extends State<TabTuSach> {
     );
   }
 
+  // --- DANH SÁCH VI PHẠM (HIỂN THỊ TIỀN) ---
   Widget _buildFineList(List<BorrowedBookHistory> books) {
-    if (books.isEmpty) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.thumb_up_alt_outlined, size: 60, color: Colors.green[300]), SizedBox(height: 10), const Text("Tuyệt vời! Bạn không có phiếu phạt nào.", style: TextStyle(color: Colors.grey))]));
+    if (books.isEmpty) {
+      return Center(
+          child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.thumb_up_alt_outlined, size: 60, color: Colors.green[300]),
+                SizedBox(height: 10),
+                const Text("Tuyệt vời! Bạn không có khoản phạt nào.", style: TextStyle(color: Colors.grey))
+              ]));
+    }
 
     final currencyFormat = NumberFormat("#,##0", "vi_VN");
 
-    // Tính tổng tiền phạt
-    // Lưu ý: Dùng Map để tránh cộng trùng tiền phạt nếu API trả về tiền phạt của cả phiếu cho từng dòng sách
-    final uniqueFines = <int, double>{};
-    for (var book in books) {
-      uniqueFines[book.maPhieu] = book.tienPhat;
-    }
-    double totalFine = uniqueFines.values.fold(0, (sum, val) => sum + val);
+    // Tính tổng dựa trên hàm _calculateFine để cộng cả tiền tạm tính
+    double totalFine = books.fold(0, (sum, item) => sum + _calculateFine(item));
 
     return Column(
       children: [
@@ -406,7 +421,7 @@ class _TabTuSachState extends State<TabTuSach> {
           color: Colors.red[50],
           child: Column(
             children: [
-              const Text("TỔNG TIỀN PHẠT ĐÃ GHI NHẬN", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              const Text("TỔNG TIỀN PHẠT (TẠM TÍNH)", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
               const SizedBox(height: 5),
               Text("${currencyFormat.format(totalFine)} đ", style: const TextStyle(fontSize: 24, color: Colors.red, fontWeight: FontWeight.bold)),
             ],
@@ -418,14 +433,20 @@ class _TabTuSachState extends State<TabTuSach> {
             itemCount: books.length,
             itemBuilder: (context, index) {
               final item = books[index];
+              // Lấy tiền phạt (có thể là tạm tính)
+              double fine = _calculateFine(item);
+
+              bool isReturned = item.trangThai.toLowerCase().contains("đã trả");
+              String statusText = isReturned ? "Đã trả" : "Đang mượn (Quá hạn)";
+
               return Card(
                 elevation: 2,
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
                   leading: const CircleAvatar(backgroundColor: Colors.redAccent, child: Icon(Icons.gavel, color: Colors.white)),
                   title: Text(item.tenSach, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text("Phiếu #${item.maPhieu} - Đã trả"),
-                  trailing: Text("${currencyFormat.format(item.tienPhat)} đ", style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 15)),
+                  subtitle: Text("Phiếu #${item.maPhieu} - $statusText"),
+                  trailing: Text("${currencyFormat.format(fine)} đ", style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
               );
             },
