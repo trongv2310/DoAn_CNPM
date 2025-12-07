@@ -589,6 +589,8 @@ INSERT INTO PHIEUMUON (MASV, MATT, NGAYLAPPHIEUMUON, HANTRA) VALUES
 (1, 1, '2025-04-01', '2025-04-10'),
 (2, 1, '2025-05-01', '2025-05-10');
 
+
+
 -- =============================================
 -- 10) CHI TIẾT PHIẾU MƯỢN
 -- =============================================
@@ -775,4 +777,10 @@ BEGIN
         SELECT 0 AS Success;
 END;
 GO
+
+INSERT INTO PHIEUMUON (MASV,MATT,NGAYLAPPHIEUMUON,HANTRA,TRANGTHAI,SOLANGIAHAN) VALUES('1','1','2025-11-11','2025-12-2',N'Quá hạn',0)
+
+INSERT INTO CHITIETPHIEUMUON VALUES('6','1','1','2025-12-2','0')
+
+
 

@@ -197,39 +197,42 @@ namespace API_ThuVien.Controllers
 
             foreach (var pm in listPhieuMuon)
             {
-                // Lấy tổng tiền phạt của cả phiếu (nếu có) từ bảng PhieuTra
-                double tongTienPhat = await _context.Phieutras
-                    .Where(pt => pt.Mapm == pm.Mapm)
-                    .SumAsync(pt => pt.Tongtienphat ?? 0);
-
                 foreach (var ct in pm.Chitietphieumuons)
                 {
-                    // Tính số lượng đã trả
-                    var soLuongDaTra = await _context.Chitietphieutras
+                    // 1. Kiểm tra số lượng đã trả
+                    var ptDetails = await _context.Chitietphieutras
                         .Include(ctpt => ctpt.MaptNavigation)
                         .Where(ctpt => ctpt.MaptNavigation.Mapm == pm.Mapm && ctpt.Masach == ct.Masach)
-                        .SumAsync(ctpt => ctpt.Soluongtra ?? 0);
+                        .ToListAsync();
 
-                    string statusHienThi = pm.Trangthai; // Mặc định lấy trạng thái phiếu cha
+                    int soLuongDaTra = ptDetails.Sum(x => x.Soluongtra ?? 0);
+                    DateOnly hanTraSach = ct.Hantra ?? pm.Hantra;
 
-                    // LOGIC 1: Nếu đã trả đủ -> "Đã trả"
+                    string statusHienThi = pm.Trangthai;
+                    double tienPhatSach = 0;
+
+                    // 2. Xác định trạng thái và tính tiền phạt riêng cho sách này
                     if (soLuongDaTra >= (ct.Soluong ?? 0))
                     {
                         statusHienThi = "Đã trả";
+                        // Nếu đã trả, kiểm tra xem có bị phạt không (dựa trên ngày trả thực tế)
+                        var ngayTraCuoi = ptDetails.Max(x => x.Ngaytra);
+                        if (ngayTraCuoi.HasValue && ngayTraCuoi.Value > hanTraSach)
+                        {
+                            int daysLate = ngayTraCuoi.Value.DayNumber - hanTraSach.DayNumber;
+                            tienPhatSach = daysLate * 1000; // Phạt 1000đ/ngày
+                        }
                     }
                     else
                     {
-                        // LOGIC 2: Nếu chưa trả -> Kiểm tra hạn
-                        DateOnly hanTraSach = ct.Hantra ?? pm.Hantra;
-
-                        if (statusHienThi == "Chờ duyệt")
-                        {
-                            // Giữ nguyên chờ duyệt
-                        }
-                        // Nếu hôm nay > Hạn trả -> Ép thành "Quá hạn" (bất kể phiếu cha ghi gì)
+                        // Chưa trả hết
+                        if (statusHienThi == "Chờ duyệt") { /* Giữ nguyên */ }
                         else if (today > hanTraSach)
                         {
                             statusHienThi = "Quá hạn";
+                            // TÍNH TIỀN PHẠT DỰ KIẾN: (Hôm nay - Hạn trả) * 1000
+                            int daysLate = today.DayNumber - hanTraSach.DayNumber;
+                            tienPhatSach = daysLate * 1000;
                         }
                         else
                         {
@@ -245,9 +248,9 @@ namespace API_ThuVien.Controllers
                         HinhAnh = ct.MasachNavigation.Hinhanh,
                         GiaMuon = ct.MasachNavigation.Giamuon,
                         NgayMuon = pm.Ngaylapphieumuon.ToDateTime(TimeOnly.MinValue),
-                        HanTra = (ct.Hantra ?? pm.Hantra).ToDateTime(TimeOnly.MinValue),
-                        TrangThai = statusHienThi, // Trạng thái đã tính toán lại
-                        TienPhat = tongTienPhat
+                        HanTra = hanTraSach.ToDateTime(TimeOnly.MinValue),
+                        TrangThai = statusHienThi,
+                        TienPhat = tienPhatSach // Gán tiền phạt cụ thể cho sách này
                     });
                 }
             }
@@ -398,6 +401,7 @@ namespace API_ThuVien.Controllers
                 })
                 .ToListAsync();
 
+            // Lọc logic hiển thị (Tính toán sơ bộ phí phạt để thủ thư xem trước)
             var result = list.Select(item =>
             {
                 int soNgayQuaHan = 0;
@@ -406,8 +410,12 @@ namespace API_ThuVien.Controllers
                 if (today > item.HanTra)
                 {
                     soNgayQuaHan = item.HanTra.DayNumber > today.DayNumber ? 0 : today.DayNumber - item.HanTra.DayNumber;
-                    phiPhat = soNgayQuaHan * 2000;
+                    phiPhat = soNgayQuaHan * 1000; // 1000đ/ngày
                 }
+
+                // Kiểm tra xem sách này đã được trả chưa (trong trường hợp phiếu có nhiều sách)
+                // Tuy nhiên logic "Chờ trả" thường áp dụng khi user mang sách đến trả tiếp.
+                // Ở đây ta hiển thị tất cả sách trong phiếu "Chờ trả" để thủ thư tích chọn.
 
                 return new
                 {
@@ -487,5 +495,6 @@ namespace API_ThuVien.Controllers
 
             return Ok(list);
         }
+
     }
 }
