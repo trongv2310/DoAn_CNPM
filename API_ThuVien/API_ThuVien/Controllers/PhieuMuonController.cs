@@ -22,9 +22,9 @@ namespace API_ThuVien.Controllers
 
         // --- ENDPOINT 1: Độc giả gửi yêu cầu mượn ---
         [HttpPost]
+        [HttpPost]
         public async Task<IActionResult> CreateBorrowRequest([FromBody] BorrowRequestDto request)
         {
-            // 1. VALIDATION
             if (request == null || request.SachMuon == null || !request.SachMuon.Any())
                 return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ." });
 
@@ -38,40 +38,38 @@ namespace API_ThuVien.Controllers
             {
                 try
                 {
-                    // Tìm sinh viên
                     var sinhVien = await _context.Sinhviens.FirstOrDefaultAsync(sv => sv.Mataikhoan == request.MaTaiKhoan);
                     if (sinhVien == null) return NotFound(new { success = false, message = "Không tìm thấy thông tin sinh viên." });
 
-                    // 2. KIỂM TRA TỒN KHO (Chỉ kiểm tra, KHÔNG trừ kho tại đây)
+                    var defaultThuThu = await _context.Thuthus.FirstOrDefaultAsync();
+                    int firstMapm = 0;
+
+                    // --- ĐIỂM KHÁC BIỆT: Tách từng sách ra thành 1 phiếu riêng ---
                     foreach (var item in request.SachMuon)
                     {
+                        // Kiểm tra tồn kho
                         var sach = await _context.Saches.FindAsync(item.MaSach);
                         if (sach == null) throw new Exception($"Sách ID {item.MaSach} không tồn tại.");
-
-                        // Kiểm tra xem hiện tại kho có đủ không để báo lỗi ngay cho người dùng
                         if (sach.Soluongton < item.SoLuong)
                             throw new Exception($"Sách '{sach.Tensach}' hiện không đủ số lượng (Còn: {sach.Soluongton}).");
 
-                        // ĐÃ XÓA: Đoạn code trừ tồn kho ở đây.
-                    }
+                        // Tạo 1 Phiếu Mượn cho RIÊNG cuốn sách này
+                        var newPhieuMuon = new Phieumuon
+                        {
+                            Masv = sinhVien.Masv,
+                            Matt = defaultThuThu?.Matt ?? 1,
+                            Ngaylapphieumuon = ngayHienTai,
+                            Hantra = hanTra,
+                            Trangthai = "Chờ duyệt", // Trạng thái này giờ chỉ đại diện cho đúng 1 cuốn sách này
+                            Solangiahan = 0
+                        };
 
-                    // 3. TẠO PHIẾU MƯỢN (TRẠNG THÁI CHỜ DUYỆT)
-                    var defaultThuThu = await _context.Thuthus.FirstOrDefaultAsync(); // Có thể null nếu chưa có thủ thư nào
-                    var newPhieuMuon = new Phieumuon
-                    {
-                        Masv = sinhVien.Masv,
-                        Matt = defaultThuThu?.Matt ?? 1, // Gán tạm 1 thủ thư mặc định
-                        Ngaylapphieumuon = ngayHienTai,
-                        Hantra = hanTra,
-                        Trangthai = "Chờ duyệt"
-                    };
+                        _context.Phieumuons.Add(newPhieuMuon);
+                        await _context.SaveChangesAsync(); // Lưu để lấy ID phiếu mới
 
-                    _context.Phieumuons.Add(newPhieuMuon);
-                    await _context.SaveChangesAsync(); // Lưu để lấy Mapm
+                        if (firstMapm == 0) firstMapm = newPhieuMuon.Mapm;
 
-                    // 4. TẠO CHI TIẾT
-                    foreach (var item in request.SachMuon)
-                    {
+                        // Tạo chi tiết (Mỗi phiếu chỉ có 1 dòng chi tiết này)
                         var chiTiet = new Chitietphieumuon
                         {
                             Mapm = newPhieuMuon.Mapm,
@@ -89,8 +87,8 @@ namespace API_ThuVien.Controllers
                     return Ok(new
                     {
                         success = true,
-                        message = "Gửi yêu cầu thành công. Vui lòng chờ thủ thư duyệt.",
-                        maPhieuMuon = newPhieuMuon.Mapm
+                        message = "Gửi yêu cầu thành công. Đã tách thành các phiếu riêng biệt.",
+                        maPhieuMuon = firstMapm
                     });
                 }
                 catch (Exception ex)
@@ -199,45 +197,28 @@ namespace API_ThuVien.Controllers
             {
                 foreach (var ct in pm.Chitietphieumuons)
                 {
-                    // 1. Kiểm tra số lượng đã trả
-                    var ptDetails = await _context.Chitietphieutras
-                        .Include(ctpt => ctpt.MaptNavigation)
-                        .Where(ctpt => ctpt.MaptNavigation.Mapm == pm.Mapm && ctpt.Masach == ct.Masach)
-                        .ToListAsync();
+                    // Lấy trạng thái trực tiếp từ Phiếu
+                    string statusHienThi = pm.Trangthai;
 
-                    int soLuongDaTra = ptDetails.Sum(x => x.Soluongtra ?? 0);
+                    double tienPhatSach = 0;
                     DateOnly hanTraSach = ct.Hantra ?? pm.Hantra;
 
-                    string statusHienThi = pm.Trangthai;
-                    double tienPhatSach = 0;
-
-                    // 2. Xác định trạng thái và tính tiền phạt riêng cho sách này
-                    if (soLuongDaTra >= (ct.Soluong ?? 0))
+                    // Xử lý hiển thị Quá hạn nếu chưa trả
+                    if (pm.Trangthai != "Đã trả" && pm.Trangthai != "Chờ duyệt" && pm.Trangthai != "Từ chối" && today > hanTraSach)
                     {
-                        statusHienThi = "Đã trả";
-                        // Nếu đã trả, kiểm tra xem có bị phạt không (dựa trên ngày trả thực tế)
-                        var ngayTraCuoi = ptDetails.Max(x => x.Ngaytra);
-                        if (ngayTraCuoi.HasValue && ngayTraCuoi.Value > hanTraSach)
-                        {
-                            int daysLate = ngayTraCuoi.Value.DayNumber - hanTraSach.DayNumber;
-                            tienPhatSach = daysLate * 1000; // Phạt 1000đ/ngày
-                        }
+                        if (statusHienThi == "Đang mượn") statusHienThi = "Quá hạn";
+                        int daysLate = today.DayNumber - hanTraSach.DayNumber;
+                        tienPhatSach = daysLate * 1000;
                     }
-                    else
+
+                    // Nếu đã trả thì lấy tiền phạt thực tế (nếu có)
+                    if (pm.Trangthai == "Đã trả")
                     {
-                        // Chưa trả hết
-                        if (statusHienThi == "Chờ duyệt") { /* Giữ nguyên */ }
-                        else if (today > hanTraSach)
-                        {
-                            statusHienThi = "Quá hạn";
-                            // TÍNH TIỀN PHẠT DỰ KIẾN: (Hôm nay - Hạn trả) * 1000
-                            int daysLate = today.DayNumber - hanTraSach.DayNumber;
-                            tienPhatSach = daysLate * 1000;
-                        }
-                        else
-                        {
-                            statusHienThi = "Đang mượn";
-                        }
+                        var phieuTra = await _context.Phieutras
+                           .Where(pt => pt.Mapm == pm.Mapm)
+                           .OrderByDescending(pt => pt.Ngaylapphieutra)
+                           .FirstOrDefaultAsync();
+                        if (phieuTra != null) tienPhatSach = phieuTra.Tongtienphat ?? 0;
                     }
 
                     result.Add(new LichSuMuonDto
@@ -250,11 +231,10 @@ namespace API_ThuVien.Controllers
                         NgayMuon = pm.Ngaylapphieumuon.ToDateTime(TimeOnly.MinValue),
                         HanTra = hanTraSach.ToDateTime(TimeOnly.MinValue),
                         TrangThai = statusHienThi,
-                        TienPhat = tienPhatSach // Gán tiền phạt cụ thể cho sách này
+                        TienPhat = tienPhatSach
                     });
                 }
             }
-
             return Ok(result);
         }
 

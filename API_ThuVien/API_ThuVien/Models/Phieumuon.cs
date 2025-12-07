@@ -16,6 +16,7 @@ public partial class Phieumuon
     public DateOnly Hantra { get; set; }
 
     public string Trangthai { get; set; } = null!;
+    public int Solangiahan { get; set; }
 
     public virtual ICollection<Chitietphieumuon> Chitietphieumuons { get; set; } = new List<Chitietphieumuon>();
 
