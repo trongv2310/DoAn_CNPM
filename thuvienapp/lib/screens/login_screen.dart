@@ -3,6 +3,7 @@ import 'package:provider/provider.dart'; // Import Provider
 import '../providers/api_service.dart';
 import '../providers/user_provider.dart'; // Import UserProvider
 import 'home_screen.dart';
+import 'dangky.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -73,6 +74,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: _isLoading ? CircularProgressIndicator(color: Colors.white) : Text("Đăng Nhập"),
                   ),
                 ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Chưa có tài khoản? "),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const RegisterScreen())
+                        );
+                      },
+                      child: const Text(
+                          "Đăng ký ngay",
+                          style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)
+                      ),
+                    )
+                  ],
+                )
               ],
             ),
           ),
@@ -80,4 +99,5 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+
 }
