@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-// LƯU Ý: Kiểm tra namespace này. Nếu project bạn tên khác thì sửa lại (VD: ThuVienAPI.Models)
+﻿// LƯU Ý: Kiểm tra namespace này. Nếu project bạn tên khác thì sửa lại (VD: ThuVienAPI.Models)
 using API_ThuVien.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
 namespace API_ThuVien.Controllers
 {
@@ -118,6 +119,55 @@ namespace API_ThuVien.Controllers
             return Ok(new { message = "Đổi mật khẩu thành công" });
         }
 
-        
+        public class RegisterRequest
+        {
+            public string TenDangNhap { get; set; } = null!;
+            public string MatKhau { get; set; } = null!;
+            public string HoVaTen { get; set; } = null!;
+            public string GioiTinh { get; set; } = null!;
+            public DateTime NgaySinh { get; set; }
+            public string Sdt { get; set; } = null!;
+            public string Email { get; set; } = null!;
+        }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        {
+            // Mặc định đăng ký mới sẽ là Độc giả (MaQuyen = 4)
+            int defaultRole = 4;
+
+            var parameters = new[]
+            {
+            new SqlParameter("@TenDangNhap", request.TenDangNhap),
+            new SqlParameter("@MatKhau", request.MatKhau),
+            new SqlParameter("@MaQuyen", defaultRole),
+            new SqlParameter("@HoVaTen", request.HoVaTen),
+            new SqlParameter("@GioiTinh", request.GioiTinh),
+            new SqlParameter("@NgaySinh", request.NgaySinh.ToString("yyyy-MM-dd")),
+            new SqlParameter("@Sdt", request.Sdt),
+            new SqlParameter("@Email", request.Email)
+        };
+
+            try
+            {
+                // Gọi lại Stored Procedure có sẵn của Admin nhưng dùng cho Public
+                var result = await _context.Database.SqlQueryRaw<int>(
+                    "EXEC SP_ADMIN_THEM_TAIKHOAN @TenDangNhap, @MatKhau, @MaQuyen, @HoVaTen, @GioiTinh, @NgaySinh, @Sdt, @Email",
+                    parameters
+                ).ToListAsync();
+
+                if (result.Any())
+                {
+                    return Ok(new { success = true, message = "Đăng ký thành công! Vui lòng đăng nhập." });
+                }
+                return BadRequest(new { success = false, message = "Lỗi không xác định khi tạo tài khoản." });
+            }
+            catch (Exception ex)
+            {
+                // Lỗi thường gặp: Trùng tên đăng nhập hoặc trùng Email (do ràng buộc Unique trong DB)
+                return BadRequest(new { success = false, message = "Tên đăng nhập hoặc Email đã tồn tại!" });
+            }
+
+        }
     }
 }

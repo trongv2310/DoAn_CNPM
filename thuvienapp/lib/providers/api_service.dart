@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/sach.dart';
 import '../models/user.dart';
-import '../models/borrowed_book_history.dart'; // Đảm bảo bạn đã có file model này từ nhánh Đăng
+import '../models/borrowed_book_history.dart';
 
-// DTO: Class dùng để gửi yêu cầu mượn (Lấy từ nhánh Đăng)
+// DTO: Class dùng để gửi yêu cầu mượn
 class SachMuonRequest {
   final int maSach;
   final int soLuong;
@@ -32,7 +32,7 @@ class ApiService {
   }
 
   // ============================================================
-  // 1. XÁC THỰC (AUTH) - Dùng chung
+  // 1. XÁC THỰC (AUTH)
   // ============================================================
   Future<User?> login(String username, String password) async {
     final url = Uri.parse('$baseUrl/Auth/login');
@@ -67,7 +67,7 @@ class ApiService {
   }
 
   // ============================================================
-  // 2. QUẢN LÝ SÁCH - Dùng chung
+  // 2. QUẢN LÝ SÁCH
   // ============================================================
   Future<List<Sach>> fetchSaches() async {
     final url = Uri.parse('$baseUrl/Sach');
@@ -98,7 +98,7 @@ class ApiService {
   }
 
   // ============================================================
-  // 3. CHỨC NĂNG ĐỘC GIẢ (Mượn/Trả) - Từ nhánh Đăng
+  // 3. CHỨC NĂNG ĐỘC GIẢ (Mượn/Trả)
   // ============================================================
   Future<Map<String, dynamic>> muonNhieuSachFull(
       int maSinhVien,
@@ -129,7 +129,6 @@ class ApiService {
 
       print("LOG NHẬN (${response.statusCode}): ${response.body}");
 
-      // --- SỬA LỖI FORMAT EXCEPTION TẠI ĐÂY ---
       // 1. Kiểm tra nếu body rỗng -> Trả về lỗi server thay vì crash app
       if (response.body.isEmpty) {
         return {"success": false, "message": "Server trả về rỗng (Mã: ${response.statusCode})"};
@@ -214,7 +213,7 @@ class ApiService {
   }
 
   // ============================================================
-  // 4. CHỨC NĂNG THỦ KHO (Nhập/Thanh lý) - Từ nhánh Trọng
+  // 4. CHỨC NĂNG THỦ KHO (Nhập/Thanh lý)
   // ============================================================
   Future<bool> nhapHang(int maThuKho, List<Map<String, dynamic>> chiTiet) async {
     final url = Uri.parse('$baseUrl/ThuKho/nhap-hang');
@@ -265,7 +264,7 @@ class ApiService {
   }
 
   // ============================================================
-  // 5. TƯƠNG TÁC (Hỏi đáp/Góp ý) - Từ nhánh Trọng
+  // 5. TƯƠNG TÁC (Hỏi đáp/Góp ý)
   // ============================================================
   Future<bool> guiCauHoi(int maSV, String cauHoi) async {
     final url = Uri.parse('$baseUrl/TuongTac/gui-cau-hoi');
@@ -537,4 +536,24 @@ class ApiService {
     }
   }
 
+// Đăng ký tài khoản mới
+  Future<Map<String, dynamic>> register(Map<String, dynamic> data) async {
+    final url = Uri.parse('$baseUrl/Auth/register');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(data),
+      );
+
+      final body = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {"success": true, "message": body['message']};
+      } else {
+        return {"success": false, "message": body['message'] ?? "Đăng ký thất bại"};
+      }
+    } catch (e) {
+      return {"success": false, "message": "Lỗi kết nối: $e"};
+    }
+  }
 }
