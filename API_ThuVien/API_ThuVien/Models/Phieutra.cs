@@ -16,7 +16,7 @@ public partial class Phieutra
     public int? Songayquahan { get; set; }
 
     public double? Tongtienphat { get; set; }
-
+    public string? Trangthaithanhtoan { get; set; }
     public virtual ICollection<Chitietphieutra> Chitietphieutras { get; set; } = new List<Chitietphieutra>();
 
     public virtual Phieumuon MapmNavigation { get; set; } = null!;

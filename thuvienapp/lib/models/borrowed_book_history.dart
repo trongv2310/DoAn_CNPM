@@ -8,6 +8,7 @@ class BorrowedBookHistory {
   final String hanTra;    // TabTuSach đang xử lý chuỗi ngày, nên để String
   final String trangThai;
   final double tienPhat;  // Khớp với item.tienPhat
+  final String trangThaiThanhToan;
 
   BorrowedBookHistory({
     required this.maPhieu,
@@ -19,6 +20,7 @@ class BorrowedBookHistory {
     required this.hanTra,
     required this.trangThai,
     required this.tienPhat,
+    required this.trangThaiThanhToan,
   });
 
   factory BorrowedBookHistory.fromJson(Map<String, dynamic> json) {
@@ -40,6 +42,7 @@ class BorrowedBookHistory {
 
       // Lấy tiền phạt
       tienPhat: (json['tienPhat'] ?? json['TienPhat'] ?? 0).toDouble(),
+      trangThaiThanhToan: json['trangThaiThanhToan'] ?? json['TrangThaiThanhToan'] ?? "Hoàn thành",
     );
   }
 }

@@ -8,6 +8,7 @@ import 'DuyetMuon.dart';
 import 'TraSachPhat.dart';
 import 'HoTroDocGia.dart';
 import '../Admin/BaoCaoTongHop.dart';
+import 'DuyetGiaHan.dart';
 
 class LibrarianHomeScreen extends StatefulWidget {
   final User user;
@@ -19,11 +20,12 @@ class LibrarianHomeScreen extends StatefulWidget {
 }
 
 class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
-  // Cập nhật key map stats
+  // Khởi tạo đầy đủ các key với giá trị 0
   Map<String, int> _stats = {
     'choDuyet': 0,
-    'yeuCauTra': 0, // Đổi từ dangMuon sang yeuCauTra
-    'cauHoiMoi': 0
+    'yeuCauTra': 0,
+    'cauHoiMoi': 0,
+    'yeuCauGiaHan': 0,
   };
   bool _isLoading = true;
   final ApiService _api = ApiService();
@@ -59,6 +61,14 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
         ),
         backgroundColor: Colors.blue[800],
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginScreen()));
+            },
+          )
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadStats,
@@ -69,10 +79,10 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
             _buildListCard(
               context,
               title: "Duyệt Mượn Sách",
-              subtitle: _isLoading ? "Đang tải..." : "${_stats['choDuyet']} yêu cầu chờ",
+              subtitle: _isLoading ? "Đang tải..." : "${_stats['choDuyet'] ?? 0} yêu cầu chờ",
               icon: Icons.fact_check_outlined,
               color: const Color(0xFF00C853),
-              isBadgeVisible: _stats['choDuyet']! > 0,
+              isBadgeVisible: (_stats['choDuyet'] ?? 0) > 0,
               onTap: () async {
                 await Navigator.push(context, MaterialPageRoute(builder: (_) => ApproveBorrowScreen(user: widget.user)));
                 _loadStats();
@@ -81,16 +91,14 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
 
             const SizedBox(height: 16),
 
-            // Thẻ 2: Trả Sách & Phạt (CẬP NHẬT Ở ĐÂY)
+            // Thẻ 2: Trả Sách & Phạt
             _buildListCard(
               context,
               title: "Trả Sách & Phạt",
-              // Hiển thị số lượng yêu cầu trả
-              subtitle: _isLoading ? "Đang tải..." : "${_stats['yeuCauTra']} yêu cầu trả",
+              subtitle: _isLoading ? "Đang tải..." : "${_stats['yeuCauTra'] ?? 0} yêu cầu trả",
               icon: Icons.assignment_return_outlined,
-              color: const Color(0xFFFF6D00), // Cam
-              // Hiện chấm đỏ nếu có yêu cầu trả
-              isBadgeVisible: _stats['yeuCauTra']! > 0,
+              color: const Color(0xFFFF6D00),
+              isBadgeVisible: (_stats['yeuCauTra'] ?? 0) > 0,
               onTap: () async {
                 await Navigator.push(context, MaterialPageRoute(builder: (_) => ReturnAndFineScreen(user: widget.user)));
                 _loadStats();
@@ -99,14 +107,31 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
 
             const SizedBox(height: 16),
 
-            // Thẻ 3: Hỗ trợ độc giả
+            // [CẬP NHẬT] Thẻ 3: Duyệt Gia Hạn
+            _buildListCard(
+              context,
+              title: "Duyệt Gia Hạn",
+              // SỬA Ở ĐÂY: Thêm ?? 0 để tránh hiển thị null
+              subtitle: _isLoading ? "Đang tải..." : "${_stats['yeuCauGiaHan'] ?? 0} yêu cầu gia hạn",
+              icon: Icons.update,
+              color: Colors.purple,
+              isBadgeVisible: (_stats['yeuCauGiaHan'] ?? 0) > 0,
+              onTap: () async {
+                await Navigator.push(context, MaterialPageRoute(builder: (_) => ApproveExtensionScreen(user: widget.user)));
+                _loadStats();
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            // Thẻ 4: Hỗ trợ độc giả
             _buildListCard(
               context,
               title: "Hỗ Trợ Độc Giả",
-              subtitle: _isLoading ? "Đang tải..." : "${_stats['cauHoiMoi']} câu hỏi mới",
+              subtitle: _isLoading ? "Đang tải..." : "${_stats['cauHoiMoi'] ?? 0} câu hỏi mới",
               icon: Icons.headset_mic_outlined,
               color: const Color(0xFF2962FF),
-              isBadgeVisible: _stats['cauHoiMoi']! > 0,
+              isBadgeVisible: (_stats['cauHoiMoi'] ?? 0) > 0,
               onTap: () async {
                 await Navigator.push(context, MaterialPageRoute(builder: (_) => SupportReaderScreen(user: widget.user)));
                 _loadStats();
@@ -115,7 +140,7 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
 
             const SizedBox(height: 16),
 
-            // Thẻ 4: Thống kê
+            // Thẻ 5: Thống kê
             _buildListCard(
               context,
               title: "Thống Kê",

@@ -186,7 +186,7 @@ CREATE TABLE PHIEUTRA (
     NGAYLAPPHIEUTRA DATE NOT NULL,
     SONGAYQUAHAN INT DEFAULT 0 CHECK (SONGAYQUAHAN >= 0),
     TONGTIENPHAT FLOAT DEFAULT 0 CHECK (TONGTIENPHAT >= 0),
-
+	TRANGTHAITHANHTOAN NVARCHAR(50) DEFAULT N'Chưa thanh toán',
     CONSTRAINT FK_PT_PM FOREIGN KEY (MAPM) REFERENCES PHIEUMUON(MAPM),
     CONSTRAINT FK_PT_TT FOREIGN KEY (MATT) REFERENCES THUTHU(MATT)
 );
@@ -582,54 +582,7 @@ INSERT INTO SACH (TENSACH, MATG, MANXB, HINHANH, THELOAI, MOTA, GIAMUON, SOLUONG
 -- =============================================
 -- 9) PHIẾU MƯỢN
 -- =============================================
-INSERT INTO PHIEUMUON (MASV, MATT, NGAYLAPPHIEUMUON, HANTRA) VALUES
-(1, 1, '2025-01-01', '2025-01-10'),
-(2, 1, '2025-02-01', '2025-02-10'),
-(3, 1, '2025-03-01', '2025-03-10'),
-(1, 1, '2025-04-01', '2025-04-10'),
-(2, 1, '2025-05-01', '2025-05-10');
 
-
-
--- =============================================
--- 10) CHI TIẾT PHIẾU MƯỢN
--- =============================================
-INSERT INTO CHITIETPHIEUMUON (MAPM, MASACH, SOLUONG) VALUES
-(1, 1, 1),
-(1, 2, 1),
-(2, 3, 1),
-(2, 4, 1),
-(3, 5, 1),
-(3, 6, 1),
-(4, 7, 1),
-(4, 8, 1),
-(5, 9, 1),
-(5, 10, 1);
-
--- =============================================
--- 11) PHIẾU TRẢ
--- =============================================
-INSERT INTO PHIEUTRA (MAPM, MATT, NGAYLAPPHIEUTRA) VALUES
-(1, 1, '2025-01-05'),
-(2, 1, '2025-02-08'),
-(3, 1, '2025-03-15'),
-(4, 1, '2025-04-05'),
-(5, 1, '2025-05-12');
-
--- =============================================
--- 12) CHI TIẾT PHIẾU TRẢ
--- =============================================
-INSERT INTO CHITIETPHIEUTRA (MAPT, MASACH, SOLUONGTRA, NGAYTRA) VALUES
-(1, 1, 1, '2025-01-05'),
-(1, 2, 1, '2025-01-05'),
-(2, 3, 1, '2025-02-08'),
-(2, 4, 1, '2025-02-08'),
-(3, 5, 1, '2025-03-15'),
-(3, 6, 1, '2025-03-15'),
-(4, 7, 1, '2025-04-05'),
-(4, 8, 1, '2025-04-05'),
-(5, 9, 1, '2025-05-12'),
-(5, 10, 1, '2025-05-12');
 
 -- =============================================
 -- 13) PHIẾU NHẬP
@@ -780,7 +733,7 @@ GO
 
 INSERT INTO PHIEUMUON (MASV,MATT,NGAYLAPPHIEUMUON,HANTRA,TRANGTHAI,SOLANGIAHAN) VALUES('1','1','2025-11-11','2025-12-2',N'Quá hạn',0)
 
-INSERT INTO CHITIETPHIEUMUON VALUES('6','1','1','2025-12-2','0')
+INSERT INTO CHITIETPHIEUMUON VALUES('1','1','1','2025-12-2','0')
 
-
-
+ALTER TABLE CHITIETPHIEUMUON ADD TRANGTHAIGIAHAN NVARCHAR(50) DEFAULT NULL;
+ALTER TABLE CHITIETPHIEUMUON ADD NGAYGIAHANMONGMUON DATE DEFAULT NULL;
