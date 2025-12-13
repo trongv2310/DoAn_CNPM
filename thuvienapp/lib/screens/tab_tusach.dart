@@ -34,15 +34,13 @@ class _TabTuSachState extends State<TabTuSach> {
   }
 
   // --- HÀM TÍNH TIỀN PHẠT (CẢ THỰC TẾ VÀ TẠM TÍNH) ---
-  // Hàm này đảm bảo hiển thị tiền ngay cả khi Backend chưa tính
   double _calculateFine(BorrowedBookHistory item) {
-    // 1. Nếu API đã trả về tiền phạt (thường là sách đã trả), dùng luôn
+    // 1. Nếu API đã trả về tiền phạt thực tế (thường là sách đã trả)
     if (item.tienPhat > 0) return item.tienPhat;
 
-    // 2. Nếu chưa có tiền phạt từ API, kiểm tra xem có đang quá hạn không
-    // Chỉ tính với sách chưa trả và không phải đang chờ duyệt
+    // 2. Nếu sách chưa trả, tính phạt tạm tính dựa trên ngày quá hạn
     String status = item.trangThai.toLowerCase();
-    if (status.contains("đã trả") || status.contains("chờ duyệt")) return 0.0;
+    if (status.contains("đã trả") || status.contains("chờ duyệt") || status.contains("từ chối")) return 0.0;
 
     try {
       DateTime hanTra = DateTime.parse(item.hanTra);
@@ -50,18 +48,43 @@ class _TabTuSachState extends State<TabTuSach> {
 
       // Nếu hiện tại > hạn trả
       if (now.isAfter(hanTra)) {
-        // Tính số ngày quá hạn (làm tròn xuống)
         int daysLate = now.difference(hanTra).inDays;
         if (daysLate > 0) {
           return daysLate * 1000.0; // Phạt 1.000đ / ngày
         }
       }
     } catch (e) {
-      // Lỗi parse ngày thì bỏ qua
       return 0.0;
     }
 
     return 0.0;
+  }
+
+  // --- HÀM XỬ LÝ THANH TOÁN TIỀN PHẠT ---
+  void _handlePayFine(int maPhieu) async {
+    bool confirm = await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Thanh toán tiền phạt"),
+        content: const Text("Xác nhận đóng phạt cho phiếu này?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Hủy")),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Đồng ý")),
+        ],
+      ),
+    ) ?? false;
+
+    if (confirm) {
+      bool success = await _apiService.thanhToanPhat(maPhieu);
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Thanh toán thành công!"), backgroundColor: Colors.green));
+        _handleRefresh(); // Tải lại danh sách để cập nhật trạng thái
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Lỗi thanh toán!"), backgroundColor: Colors.red));
+      }
+    }
   }
 
   // --- HÀM XỬ LÝ TRẢ SÁCH ---
@@ -123,7 +146,6 @@ class _TabTuSachState extends State<TabTuSach> {
 
   // --- POPUP CHI TIẾT ---
   void _showTicketDetail(BuildContext context, BorrowedBookHistory item) {
-    // Tính lại tiền phạt để hiển thị trong popup
     double fine = _calculateFine(item);
 
     showDialog(
@@ -147,6 +169,10 @@ class _TabTuSachState extends State<TabTuSach> {
 
             if (fine > 0)
               _buildRowDetail("Tiền phạt:", "${NumberFormat("#,##0").format(fine)} đ", isRed: true),
+
+            // Hiển thị trạng thái thanh toán nếu có phạt
+            if (fine > 0)
+              _buildRowDetail("Thanh toán:", item.trangThaiThanhToan, isStatus: true),
 
             _buildRowDetail("Giá mượn:", "${item.giaMuon.toInt()} đ"),
 
@@ -199,10 +225,10 @@ class _TabTuSachState extends State<TabTuSach> {
 
   Color _getStatusColor(String status) {
     String s = status.toLowerCase();
-    if (s.contains("quá hạn")) return Colors.red;
-    if (s.contains("đã trả")) return Colors.green;
+    if (s.contains("quá hạn") || s.contains("chưa thanh toán")) return Colors.red;
+    if (s.contains("đã trả") || s.contains("đã thanh toán")) return Colors.green;
     if (s.contains("đang mượn")) return Colors.blue;
-    if (s.contains("chờ duyệt")) return Colors.orange;
+    if (s.contains("chờ duyệt") || s.contains("chờ trả")) return Colors.orange;
     return Colors.grey;
   }
 
@@ -242,19 +268,21 @@ class _TabTuSachState extends State<TabTuSach> {
             } else {
               final allBooks = snapshot.data!;
 
-              // 1. Hiện tại: Chưa trả xong hoặc đang quá hạn
+              // 1. Hiện tại: Các sách chưa trả (Đang mượn, Chờ duyệt, Quá hạn, Chờ trả...)
               final hienTai = allBooks.where((b) {
                 String s = b.trangThai.toLowerCase();
-                return s.contains("đang mượn") || s.contains("chờ duyệt") || s.contains("thiếu") || s.contains("chờ trả") || s.contains("quá hạn");
+                // Loại bỏ những sách đã trả hoặc bị từ chối
+                return !s.contains("đã trả") && !s.contains("từ chối");
               }).toList();
 
-              // 2. Lịch sử: Đã trả hoặc bị từ chối
+              // 2. Lịch sử: Các sách đã kết thúc (Đã trả, Từ chối)
               final lichSu = allBooks.where((b) {
                 String s = b.trangThai.toLowerCase();
                 return s.contains("đã trả") || s.contains("từ chối");
               }).toList();
 
-              // 3. Vi Phạm: Có tiền phạt (từ API hoặc do client tự tính)
+              // 3. Vi Phạm: Sách có tiền phạt (Thực tế hoặc tạm tính)
+              // Hiển thị cả những sách đã trả nhưng chưa đóng tiền phạt
               final viPham = allBooks.where((b) => _calculateFine(b) > 0).toList();
 
               return TabBarView(
@@ -354,7 +382,7 @@ class _TabTuSachState extends State<TabTuSach> {
                             if (isCurrent)
                               Row(
                                 children: [
-                                  if (!isLate && item.trangThai != "Chờ duyệt")
+                                  if (!isLate && item.trangThai != "Chờ duyệt" && item.trangThai != "Chờ trả")
                                     SizedBox(
                                       height: 30,
                                       child: ElevatedButton(
@@ -363,10 +391,10 @@ class _TabTuSachState extends State<TabTuSach> {
                                         child: const Text("Gia hạn", style: TextStyle(fontSize: 11, color: Colors.white)),
                                       ),
                                     ),
-                                  if (!isLate && item.trangThai != "Chờ duyệt") const SizedBox(width: 8),
+                                  if (!isLate && item.trangThai != "Chờ duyệt" && item.trangThai != "Chờ trả") const SizedBox(width: 8),
 
-                                  // Nút trả sách
-                                  if (item.trangThai != "Chờ duyệt")
+                                  // Nút trả sách (Chỉ hiện khi chưa trả và chưa gửi yêu cầu)
+                                  if (item.trangThai != "Chờ duyệt" && item.trangThai != "Chờ trả")
                                     SizedBox(
                                       height: 30,
                                       child: ElevatedButton(
@@ -395,7 +423,7 @@ class _TabTuSachState extends State<TabTuSach> {
     );
   }
 
-  // --- DANH SÁCH VI PHẠM (HIỂN THỊ TIỀN) ---
+  // --- DANH SÁCH VI PHẠM (SỬA LẠI: CÓ NÚT THANH TOÁN) ---
   Widget _buildFineList(List<BorrowedBookHistory> books) {
     if (books.isEmpty) {
       return Center(
@@ -403,15 +431,20 @@ class _TabTuSachState extends State<TabTuSach> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.thumb_up_alt_outlined, size: 60, color: Colors.green[300]),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 const Text("Tuyệt vời! Bạn không có khoản phạt nào.", style: TextStyle(color: Colors.grey))
               ]));
     }
 
     final currencyFormat = NumberFormat("#,##0", "vi_VN");
 
-    // Tính tổng dựa trên hàm _calculateFine để cộng cả tiền tạm tính
-    double totalFine = books.fold(0, (sum, item) => sum + _calculateFine(item));
+    // Tính tổng tiền phạt của những khoản CHƯA THANH TOÁN
+    double totalUnpaidFine = books.fold(0, (sum, item) {
+      if (item.trangThaiThanhToan == "Chưa thanh toán" || item.trangThai.contains("Quá hạn")) {
+        return sum + _calculateFine(item);
+      }
+      return sum;
+    });
 
     return Column(
       children: [
@@ -421,9 +454,9 @@ class _TabTuSachState extends State<TabTuSach> {
           color: Colors.red[50],
           child: Column(
             children: [
-              const Text("TỔNG TIỀN PHẠT (TẠM TÍNH)", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              const Text("TỔNG TIỀN CẦN THANH TOÁN", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
               const SizedBox(height: 5),
-              Text("${currencyFormat.format(totalFine)} đ", style: const TextStyle(fontSize: 24, color: Colors.red, fontWeight: FontWeight.bold)),
+              Text("${currencyFormat.format(totalUnpaidFine)} đ", style: const TextStyle(fontSize: 24, color: Colors.red, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
@@ -433,20 +466,62 @@ class _TabTuSachState extends State<TabTuSach> {
             itemCount: books.length,
             itemBuilder: (context, index) {
               final item = books[index];
-              // Lấy tiền phạt (có thể là tạm tính)
               double fine = _calculateFine(item);
 
+              // Logic hiển thị trạng thái thanh toán
+              bool isPaid = item.trangThaiThanhToan == "Đã thanh toán";
               bool isReturned = item.trangThai.toLowerCase().contains("đã trả");
-              String statusText = isReturned ? "Đã trả" : "Đang mượn (Quá hạn)";
+              bool canPay = !isPaid && isReturned && fine > 0; // Chỉ thanh toán được khi ĐÃ TRẢ SÁCH và CHƯA ĐÓNG TIỀN
 
               return Card(
                 elevation: 2,
                 margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: const CircleAvatar(backgroundColor: Colors.redAccent, child: Icon(Icons.gavel, color: Colors.white)),
-                  title: Text(item.tenSach, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text("Phiếu #${item.maPhieu} - $statusText"),
-                  trailing: Text("${currencyFormat.format(fine)} đ", style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 15)),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                            backgroundColor: isPaid ? Colors.green : Colors.redAccent,
+                            child: Icon(isPaid ? Icons.check : Icons.gavel, color: Colors.white)
+                        ),
+                        title: Text(item.tenSach, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Phiếu #${item.maPhieu}"),
+                            const SizedBox(height: 2),
+                            if (!isReturned)
+                              const Text("Đang mượn (Quá hạn) - Vui lòng trả sách trước", style: TextStyle(color: Colors.orange, fontSize: 12)),
+                          ],
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text("${currencyFormat.format(fine)} đ", style: TextStyle(color: isPaid ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
+                            if (isPaid)
+                              const Text("Đã thanh toán", style: TextStyle(color: Colors.green, fontSize: 10))
+                            else
+                              const Text("Chưa thanh toán", style: TextStyle(color: Colors.red, fontSize: 10))
+                          ],
+                        ),
+                      ),
+
+                      // Nút thanh toán (Chỉ hiện khi chưa thanh toán VÀ đã trả sách)
+                      if (canPay)
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+                            icon: const Icon(Icons.payment, size: 18),
+                            label: const Text("THANH TOÁN NGAY"),
+                            onPressed: () => _handlePayFine(item.maPhieu),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               );
             },

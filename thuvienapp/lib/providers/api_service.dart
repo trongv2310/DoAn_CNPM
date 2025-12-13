@@ -455,24 +455,7 @@ class ApiService {
     } catch (e) { return false; }
   }
 
-  Future<Map<String, int>> getLibrarianStats() async {
-    final url = Uri.parse('$baseUrl/PhieuMuon/librarian-stats');
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return {
-          'choDuyet': data['choDuyet'] ?? 0,
-          'yeuCauTra': data['yeuCauTra'] ?? 0, // Map đúng key mới từ API
-          'cauHoiMoi': data['cauHoiMoi'] ?? 0,
-        };
-      }
-      return {'choDuyet': 0, 'yeuCauTra': 0, 'cauHoiMoi': 0};
-    } catch (e) {
-      print("Lỗi lấy thống kê: $e");
-      return {'choDuyet': 0, 'yeuCauTra': 0, 'cauHoiMoi': 0};
-    }
-  }
+
 
   // Lấy danh sách đang mượn để trả sách
   Future<List<dynamic>> getBorrowedBooks() async {
@@ -554,6 +537,72 @@ class ApiService {
       }
     } catch (e) {
       return {"success": false, "message": "Lỗi kết nối: $e"};
+    }
+  }
+  Future<bool> thanhToanPhat(int maPhieu) async {
+    final url = Uri.parse('$baseUrl/PhieuMuon/thanh-toan-phat/$maPhieu');
+    try {
+      final response = await http.post(url);
+      // Nếu thành công (200), trả về true
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi thanh toán: $e");
+      return false;
+    }
+  }
+  Future<List<dynamic>> getExtensionRequests() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/PhieuMuon/extension-requests'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return [];
+    } catch (e) {
+      print("Lỗi lấy yêu cầu gia hạn: $e");
+      return [];
+    }
+  }
+
+  // 2. Duyệt hoặc Từ chối gia hạn
+  Future<bool> processExtension(int maPhieu, int maSach, bool dongY) async {
+    final url = Uri.parse('$baseUrl/PhieuMuon/process-extension');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "MaPhieu": maPhieu,
+          "MaSach": maSach,
+          "DongY": dongY
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi xử lý gia hạn: $e");
+      return false;
+    }
+  }
+  Future<Map<String, int>> getLibrarianStats() async {
+    final url = Uri.parse('$baseUrl/PhieuMuon/librarian-stats');
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // SỬA LỖI: Sử dụng int.parse hoặc ép kiểu an toàn
+        return {
+          'choDuyet': (data['choDuyet'] as num?)?.toInt() ?? 0,
+          'yeuCauTra': (data['yeuCauTra'] as num?)?.toInt() ?? 0,
+          'cauHoiMoi': (data['cauHoiMoi'] as num?)?.toInt() ?? 0,
+          // Thêm dòng này để lấy số liệu gia hạn
+          'yeuCauGiaHan': (data['yeuCauGiaHan'] ?? data['YeuCauGiaHan'] as num?)?.toInt() ?? 0,
+        };
+      }
+      return {'choDuyet': 0, 'yeuCauTra': 0, 'cauHoiMoi': 0, 'yeuCauGiaHan': 0};
+    } catch (e) {
+      print("Lỗi lấy thống kê: $e");
+      return {'choDuyet': 0, 'yeuCauTra': 0, 'cauHoiMoi': 0, 'yeuCauGiaHan': 0};
     }
   }
 }

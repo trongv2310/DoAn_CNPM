@@ -15,6 +15,8 @@ public partial class Chitietphieumuon
     public DateOnly? Hantra { get; set; }
     public int? Solangiahan { get; set; }
     // -------------------------------------
+    public string? Trangthaigiahan { get; set; }
+    public DateOnly? Ngaygiahanmongmuon { get; set; }
 
     public virtual Phieumuon MapmNavigation { get; set; } = null!;
 

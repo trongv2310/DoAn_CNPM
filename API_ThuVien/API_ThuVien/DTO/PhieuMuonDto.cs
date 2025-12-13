@@ -29,6 +29,8 @@ namespace API_ThuVien.DTO
         public DateTime HanTra { get; set; }
         public string TrangThai { get; set; }
         public double TienPhat { get; set; }
+        public string TrangThaiThanhToan { get; set; }
+        public string TrangThaiGiaHan { get; set; }
     }
 
     // DTO gia hạn sách
@@ -43,5 +45,11 @@ namespace API_ThuVien.DTO
     {
         public int MaPhieuMuon { get; set; }
         public int MaSach { get; set; }
+    }
+    public class DuyetGiaHanDto
+    {
+        public int MaPhieu { get; set; }
+        public int MaSach { get; set; }
+        public bool DongY { get; set; } // True = Duyệt, False = Từ chối
     }
 }
