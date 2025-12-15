@@ -45,6 +45,13 @@ namespace API_ThuVien.Controllers
             {
                 return Unauthorized(new { message = "Sai tên đăng nhập hoặc mật khẩu!" });
             }
+
+            // Kiểm tra nếu tài khoản bị khóa (Ngừng hoạt động)
+            if (user.Trangthai == "Ngừng hoạt động")
+            {
+                return BadRequest(new { message = "Tài khoản của bạn đã bị khóa! Vui lòng liên hệ đến dịch vụ CSKH" });
+            }
+
             if (user != null)
             {
                 var log = new Nhatkyhoatdong
