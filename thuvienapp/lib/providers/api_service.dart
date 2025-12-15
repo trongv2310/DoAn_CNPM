@@ -34,7 +34,7 @@ class ApiService {
   // ============================================================
   // 1. XÁC THỰC (AUTH)
   // ============================================================
-  Future<User?> login(String username, String password) async {
+  Future<Map<String, dynamic>> login(String username, String password) async {
     final url = Uri.parse('$baseUrl/Auth/login');
     try {
       final response = await http.post(
@@ -42,13 +42,29 @@ class ApiService {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"Username": username, "Password": password}),
       );
+
+      final body = jsonDecode(response.body);
+
       if (response.statusCode == 200) {
-        return User.fromJson(jsonDecode(response.body));
+        // Đăng nhập thành công
+        return {
+          "success": true,
+          "user": User.fromJson(body)
+        };
+      } else {
+        // Đăng nhập thất bại (Sai pass hoặc Bị khóa)
+        // Lấy message từ Backend trả về
+        return {
+          "success": false,
+          "message": body['message'] ?? "Đăng nhập thất bại"
+        };
       }
-      return null;
     } catch (e) {
       print("Lỗi login: $e");
-      return null;
+      return {
+        "success": false,
+        "message": "Lỗi kết nối đến máy chủ: $e"
+      };
     }
   }
 
