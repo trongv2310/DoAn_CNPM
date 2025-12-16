@@ -54,7 +54,7 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Trang Chủ Thủ Thư", style: TextStyle(fontSize: 18)),
+            const Text("Trang chủ thủ thư", style: TextStyle(fontSize: 18)),
             Text("Xin chào, ${widget.user.hoVaTen}",
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400)),
           ],
@@ -78,7 +78,7 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
             // Thẻ 1: Duyệt mượn
             _buildListCard(
               context,
-              title: "Duyệt Mượn Sách",
+              title: "Duyệt mượn sách",
               subtitle: _isLoading ? "Đang tải..." : "${_stats['choDuyet'] ?? 0} yêu cầu chờ",
               icon: Icons.fact_check_outlined,
               color: const Color(0xFF00C853),
@@ -94,7 +94,7 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
             // Thẻ 2: Trả Sách & Phạt
             _buildListCard(
               context,
-              title: "Trả Sách & Phạt",
+              title: "Trả sách & phạt",
               subtitle: _isLoading ? "Đang tải..." : "${_stats['yeuCauTra'] ?? 0} yêu cầu trả",
               icon: Icons.assignment_return_outlined,
               color: const Color(0xFFFF6D00),
@@ -110,7 +110,7 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
             // [CẬP NHẬT] Thẻ 3: Duyệt Gia Hạn
             _buildListCard(
               context,
-              title: "Duyệt Gia Hạn",
+              title: "Duyệt gia hạn",
               // SỬA Ở ĐÂY: Thêm ?? 0 để tránh hiển thị null
               subtitle: _isLoading ? "Đang tải..." : "${_stats['yeuCauGiaHan'] ?? 0} yêu cầu gia hạn",
               icon: Icons.update,
@@ -127,7 +127,7 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
             // Thẻ 4: Hỗ trợ độc giả
             _buildListCard(
               context,
-              title: "Hỗ Trợ Độc Giả",
+              title: "Hỗ trợ độc giả",
               subtitle: _isLoading ? "Đang tải..." : "${_stats['cauHoiMoi'] ?? 0} câu hỏi mới",
               icon: Icons.headset_mic_outlined,
               color: const Color(0xFF2962FF),
@@ -143,7 +143,7 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
             // Thẻ 5: Thống kê
             _buildListCard(
               context,
-              title: "Thống Kê",
+              title: "Thống kê",
               subtitle: "Xem báo cáo tổng hợp",
               icon: Icons.bar_chart_rounded,
               color: const Color(0xFFAA00FF),

@@ -68,10 +68,10 @@ class _TabTruyenState extends State<TabTruyen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildCategoryButton(Icons.list, 'Thể Loại'),
-                      _buildCategoryButton(Icons.tune, 'Bộ Lọc'),
-                      _buildCategoryButton(Icons.lightbulb_outlined, 'Tác Giả'),
-                      _buildCategoryButton(Icons.contact_support_outlined, 'Tương Tác'),
+                      _buildCategoryButton(Icons.list, 'Thể loại'),
+                      _buildCategoryButton(Icons.tune, 'Bộ lọc'),
+                      _buildCategoryButton(Icons.lightbulb_outlined, 'Tác giả'),
+                      _buildCategoryButton(Icons.contact_support_outlined, 'Tương tác'),
                     ],
                   ),
                 ),

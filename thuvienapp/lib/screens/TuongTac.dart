@@ -14,7 +14,7 @@ class InteractionScreen extends StatelessWidget {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text("Tương Tác & Phản Hồi"),
+          title: const Text("Tương tác & phản hồi"),
           backgroundColor: Colors.blueAccent,
           foregroundColor: Colors.white,
           bottom: const TabBar(
@@ -22,9 +22,9 @@ class InteractionScreen extends StatelessWidget {
             unselectedLabelColor: Colors.white70,
             indicatorColor: Colors.white,
             tabs: [
-              Tab(icon: Icon(Icons.question_answer), text: "Hỏi Đáp"),
-              Tab(icon: Icon(Icons.feedback), text: "Góp Ý"),
-              Tab(icon: Icon(Icons.star), text: "Đánh Giá"),
+              Tab(icon: Icon(Icons.question_answer), text: "Hỏi đáp"),
+              Tab(icon: Icon(Icons.feedback), text: "Góp ý"),
+              Tab(icon: Icon(Icons.star), text: "Đánh giá"),
             ],
           ),
         ),
