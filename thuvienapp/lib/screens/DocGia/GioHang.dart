@@ -108,7 +108,7 @@ class _CartScreenState extends State<CartScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Phiếu Mượn (Giỏ Sách)"),
+        title: const Text("Phiếu mượn (Giỏ sách)"),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black,

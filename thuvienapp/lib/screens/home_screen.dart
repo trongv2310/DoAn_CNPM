@@ -186,12 +186,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildCategoryButton(
-                          Icons.list, 'Thể Loại', showCategories),
-                      _buildCategoryButton(Icons.tune, 'Bộ Lọc', showFilters),
+                          Icons.list, 'Thể loại', showCategories),
+                      _buildCategoryButton(Icons.tune, 'Bộ lọc', showFilters),
                       _buildCategoryButton(
-                          Icons.lightbulb_outlined, 'Tác Giả', showAuthors),
+                          Icons.lightbulb_outlined, 'Tác giả', showAuthors),
                       _buildCategoryButton(Icons.contact_support_outlined,
-                          'Tương Tác', showInteraction),
+                          'Tương tác', showInteraction),
                     ],
                   ),
                 ),
@@ -206,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         context,
                         MaterialPageRoute(
                             builder: (_) => BookListScreen(
-                                title: "Sách Khuyến Khích",
+                                title: "Sách khuyến khích",
                                 books: recommendedBooks)));
                   },
                 ),
@@ -221,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         context,
                         MaterialPageRoute(
                             builder: (_) => BookListScreen(
-                                title: "Mới Cập Nhật", books: latestUpdates)));
+                                title: "Mới cập nhật", books: latestUpdates)));
                   },
                 ),
                 const SizedBox(height: 24),
@@ -290,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       SizedBox(width: 12),
                       Icon(Icons.search, color: Colors.grey),
                       SizedBox(width: 8),
-                      Text('Tìm Kiếm Truyện...',
+                      Text('Tìm kiếm truyện...',
                           style: TextStyle(color: Colors.grey, fontSize: 16)),
                     ],
                   ),
@@ -340,7 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-              icon: Icon(Icons.bookmarks_outlined), label: 'Tủ Sách'),
+              icon: Icon(Icons.bookmarks_outlined), label: 'Tủ sách'),
           BottomNavigationBarItem(
               icon: Icon(Icons.menu_book), label: 'Truyện'),
           BottomNavigationBarItem(

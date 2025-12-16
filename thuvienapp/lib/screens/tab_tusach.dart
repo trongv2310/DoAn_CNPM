@@ -239,7 +239,7 @@ class _TabTuSachState extends State<TabTuSach> {
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          title: const Text("Quản Lý Mượn Trả"),
+          title: const Text("Quản lý mượn trả"),
           centerTitle: true,
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,

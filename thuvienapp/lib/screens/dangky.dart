@@ -67,7 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Đăng Ký Tài Khoản"),
+        title: const Text("Đăng ký tài khoản"),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
