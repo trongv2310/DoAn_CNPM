@@ -11,7 +11,7 @@ class NhatKyHeThong extends StatelessWidget {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text("Nhật Ký Hệ Thống"),
+          title: const Text("Nhật ký hệ thống"),
           backgroundColor: Colors.blueGrey,
           foregroundColor: Colors.white,
           bottom: const TabBar(

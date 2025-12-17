@@ -73,7 +73,7 @@ class _SupportReaderScreenState extends State<SupportReaderScreen> {
     return Scaffold(
       backgroundColor: Colors.white, // Nền trắng sạch
       appBar: AppBar(
-        title: const Text("Yêu Cầu Hỗ Trợ", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text("Yêu cầu hỗ trợ", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         leading: const BackButton(color: Colors.black),
@@ -113,7 +113,7 @@ class _SupportReaderScreenState extends State<SupportReaderScreen> {
 
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Text("Yêu Cầu Hỗ Trợ", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text("Yêu cầu hỗ trợ", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
 
               // 2. DANH SÁCH YÊU CẦU

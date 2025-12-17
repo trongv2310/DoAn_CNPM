@@ -59,7 +59,7 @@ class _ApproveExtensionScreenState extends State<ApproveExtensionScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text("Duyệt Gia Hạn Sách"),
+        title: const Text("Duyệt gia hạn sách"),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 1,

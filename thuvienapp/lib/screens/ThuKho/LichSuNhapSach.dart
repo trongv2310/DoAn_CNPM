@@ -23,7 +23,7 @@ class _ImportHistoryScreenState extends State<ImportHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Lịch Sử Nhập Hàng"), backgroundColor: Colors.orange),
+      appBar: AppBar(title: Text("Lịch sử nhập hàng"), backgroundColor: Colors.orange),
       body: FutureBuilder<List<dynamic>>(
         future: _historyFuture,
         builder: (context, snapshot) {

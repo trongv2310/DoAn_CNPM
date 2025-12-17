@@ -104,7 +104,7 @@ class _LiquidationScreenState extends State<LiquidationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Thanh Lý Sách"), backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+      appBar: AppBar(title: Text("Thanh lý sách"), backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
       body: Column(
         children: [
           Expanded(

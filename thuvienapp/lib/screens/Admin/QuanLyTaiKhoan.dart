@@ -67,7 +67,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Quản Lý Tài Khoản")),
+      appBar: AppBar(title: Text("Quản lý tài khoản")),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.person_add),
         backgroundColor: Colors.blue,

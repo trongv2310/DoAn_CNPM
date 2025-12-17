@@ -239,7 +239,7 @@ class _TabTuSachState extends State<TabTuSach> {
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          title: const Text("Quản Lý Mượn Trả"),
+          title: const Text("Quản lý mượn trả"),
           centerTitle: true,
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
@@ -250,9 +250,9 @@ class _TabTuSachState extends State<TabTuSach> {
             indicatorColor: Colors.blue,
             isScrollable: false,
             tabs: [
-              Tab(text: "Hiện Tại"),
-              Tab(text: "Lịch Sử"),
-              Tab(text: "Vi Phạm"),
+              Tab(text: "Hiện tại"),
+              Tab(text: "Lịch sử"),
+              Tab(text: "Vi phạm"),
             ],
           ),
         ),

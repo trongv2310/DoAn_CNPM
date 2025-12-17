@@ -70,7 +70,7 @@ class _ReturnAndFineScreenState extends State<ReturnAndFineScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text("Duyệt Trả Sách", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text("Duyệt trả sách", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         leading: const BackButton(color: Colors.black),
@@ -106,12 +106,12 @@ class _ReturnAndFineScreenState extends State<ReturnAndFineScreen> {
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
                   children: [
-                    _buildStatCard("Yêu Cầu", "$soLuongYeuCau", Colors.blue, Colors.blue.shade50),
+                    _buildStatCard("Yêu cầu", "$soLuongYeuCau", Colors.blue, Colors.blue.shade50),
                     const SizedBox(width: 10),
-                    _buildStatCard("Quá Hạn", "$soLuongQuaHan", Colors.red, Colors.red.shade50),
+                    _buildStatCard("Quá hạn", "$soLuongQuaHan", Colors.red, Colors.red.shade50),
                     const SizedBox(width: 10),
                     _buildStatCard(
-                        "Tổng Phạt",
+                        "Tổng phạt",
                         tongTienPhat > 1000000
                             ? "${(tongTienPhat/1000000).toStringAsFixed(1)}M"
                             : "${(tongTienPhat/1000).toStringAsFixed(0)}K",
@@ -124,7 +124,7 @@ class _ReturnAndFineScreenState extends State<ReturnAndFineScreen> {
 
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Text("Yêu Cầu Đang Chờ", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                child: Text("Yêu cầu đang chờ", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
               ),
 
               // 2. DANH SÁCH CHI TIẾT
