@@ -532,5 +532,43 @@ namespace API_ThuVien.Controllers
             await _context.SaveChangesAsync();
             return Ok(new { success = true, message = request.DongY ? "Đã duyệt gia hạn." : "Đã từ chối gia hạn." });
         }
+        [HttpPost("cancel/{mapm}")]
+        public async Task<IActionResult> CancelBorrowRequest(int mapm)
+        {
+            // 1. Tìm phiếu mượn
+            var phieuMuon = await _context.Phieumuons
+                .Include(pm => pm.Chitietphieumuons)
+                .FirstOrDefaultAsync(p => p.Mapm == mapm);
+
+            if (phieuMuon == null)
+                return NotFound(new { success = false, message = "Không tìm thấy phiếu mượn." });
+
+            // 2. Kiểm tra trạng thái: Chỉ cho phép hủy khi đang "Chờ duyệt"
+            if (phieuMuon.Trangthai != "Chờ duyệt")
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Không thể hủy! Phiếu này đã được xử lý hoặc đang mượn."
+                });
+            }
+
+            try
+            {
+                // 3. Xóa chi tiết phiếu mượn trước
+                _context.Chitietphieumuons.RemoveRange(phieuMuon.Chitietphieumuons);
+
+                // 4. Xóa phiếu mượn cha
+                _context.Phieumuons.Remove(phieuMuon);
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { success = true, message = "Đã hủy yêu cầu mượn thành công!" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Lỗi hệ thống: " + ex.Message });
+            }
+        }
     }
 }
