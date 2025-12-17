@@ -621,4 +621,17 @@ class ApiService {
       return {'choDuyet': 0, 'yeuCauTra': 0, 'cauHoiMoi': 0, 'yeuCauGiaHan': 0};
     }
   }
+  // Hủy yêu cầu mượn (khi còn chờ duyệt)
+  Future<bool> huyYeuCauMuon(int maPhieu) async {
+    final url = Uri.parse('$baseUrl/PhieuMuon/cancel/$maPhieu');
+    try {
+      final response = await http.post(url);
+
+      // Nếu xóa thành công (status 200)
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi hủy yêu cầu: $e");
+      return false;
+    }
+  }
 }
