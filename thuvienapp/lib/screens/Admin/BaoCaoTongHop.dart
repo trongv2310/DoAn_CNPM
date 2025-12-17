@@ -11,7 +11,7 @@ class AdminReportsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: const Text("Báo Cáo Tổng Hợp"),
+          title: const Text("Báo cáo tổng hợp"),
           backgroundColor: Colors.purple,
           foregroundColor: Colors.white),
       body: SingleChildScrollView(

@@ -22,7 +22,7 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Báo Cáo Tài Chính"), backgroundColor: Colors.teal, foregroundColor: Colors.white),
+      appBar: AppBar(title: Text("Báo cáo tài chính"), backgroundColor: Colors.teal, foregroundColor: Colors.white),
       body: Column(
         children: [
           Padding(

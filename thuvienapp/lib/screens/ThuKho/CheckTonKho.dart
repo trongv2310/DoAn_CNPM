@@ -62,7 +62,7 @@ class _InventoryCheckScreenState extends State<InventoryCheckScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Kiểm Kê Kho Sách"),
+        title: const Text("Kiểm kê kho sách"),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),

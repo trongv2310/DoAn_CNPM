@@ -109,7 +109,7 @@ class _ImportGoodsScreenState extends State<ImportGoodsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Tạo Phiếu Nhập"), backgroundColor: Colors.orange),
+      appBar: AppBar(title: Text("Tạo phiếu nhập"), backgroundColor: Colors.orange),
       body: Column(
         children: [
           Expanded(

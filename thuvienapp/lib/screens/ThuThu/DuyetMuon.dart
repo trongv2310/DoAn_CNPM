@@ -89,7 +89,7 @@ class _ApproveBorrowScreenState extends State<ApproveBorrowScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text("Duyệt Mượn Sách", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text("Duyệt mượn sách", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         leading: const BackButton(color: Colors.black),
@@ -111,18 +111,18 @@ class _ApproveBorrowScreenState extends State<ApproveBorrowScreen> {
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
                   children: [
-                    _buildStatCard("Chờ Duyệt", _stats['choDuyet'] ?? 0, Colors.orange, const Color(0xFFFFF3E0), null), // Không cần bấm
+                    _buildStatCard("Chờ duyệt", _stats['choDuyet'] ?? 0, Colors.orange, const Color(0xFFFFF3E0), null), // Không cần bấm
                     const SizedBox(width: 10),
-                    _buildStatCard("Đã Duyệt", _stats['daDuyet'] ?? 0, Colors.green, const Color(0xFFE8F5E9), () => _viewHistory('approved', 'Lịch Sử Đã Duyệt')),
+                    _buildStatCard("Đã duyệt", _stats['daDuyet'] ?? 0, Colors.green, const Color(0xFFE8F5E9), () => _viewHistory('approved', 'Lịch Sử Đã Duyệt')),
                     const SizedBox(width: 10),
-                    _buildStatCard("Từ Chối", _stats['tuChoi'] ?? 0, Colors.red, const Color(0xFFFFEBEE), () => _viewHistory('rejected', 'Lịch Sử Từ Chối')),
+                    _buildStatCard("Từ chối", _stats['tuChoi'] ?? 0, Colors.red, const Color(0xFFFFEBEE), () => _viewHistory('rejected', 'Lịch Sử Từ Chối')),
                   ],
                 ),
               ),
 
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Align(alignment: Alignment.centerLeft, child: Text("Yêu Cầu Mới", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                child: Align(alignment: Alignment.centerLeft, child: Text("Yêu cầu mới", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
               ),
 
               // 2. DANH SÁCH YÊU CẦU CHỜ DUYỆT
