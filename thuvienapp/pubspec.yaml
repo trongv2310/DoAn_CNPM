@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  fl_chart: ^0.63.0
 
   # --- CÁC THƯ VIỆN CẦN THIẾT CHO CẢ 2 NHÁNH ---
   http: ^1.2.0

@@ -1,100 +1,55 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../providers/api_service.dart';
 
-class AdminReportsScreen extends StatelessWidget {
-  final ApiService _api = ApiService();
+class AdminReportsScreen extends StatefulWidget {
+  const AdminReportsScreen({super.key});
 
-  AdminReportsScreen({super.key});
+  @override
+  State<AdminReportsScreen> createState() => _AdminReportsScreenState();
+}
+
+class _AdminReportsScreenState extends State<AdminReportsScreen> {
+  final ApiService _api = ApiService();
+  late Future<List<dynamic>> _futureCategory;
+  late Future<List<dynamic>> _futureMonthly;
+  late Future<List<dynamic>> _futureTopBooks;
+  late Future<List<dynamic>> _futureTopReaders;
+
+  @override
+  void initState() {
+    super.initState();
+    // Bạn cần bổ sung các hàm gọi API này vào ApiService.dart tương ứng với backend
+    _futureCategory = _api.fetchList("/Admin/stats-category");
+    _futureMonthly = _api.fetchList("/Admin/stats-monthly-borrows");
+    _futureTopBooks = _api.fetchList("/Admin/stats-top-books");
+    _futureTopReaders = _api.fetchList("/Admin/stats-top-readers");
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-          title: const Text("Báo cáo tổng hợp"),
-          backgroundColor: Colors.purple,
-          foregroundColor: Colors.white),
+      appBar: AppBar(title: const Text("Thống kê chi tiết"), backgroundColor: Colors.purple, foregroundColor: Colors.white),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionTitle("HOẠT ĐỘNG THƯ VIỆN (THÁNG NÀY)"),
-            FutureBuilder<Map<String, dynamic>>(
-              future: _api.getLibrarianReport(),
-              builder: (ctx, snapshot) {
-                if (!snapshot.hasData) return const LinearProgressIndicator();
-                final data = snapshot.data!;
-                return Row(
-                  children: [
-                    _buildStatCard("Lượt mượn", "${data['luotMuon'] ?? 0}", Colors.blue),
-                    _buildStatCard("Lượt trả", "${data['luotTra'] ?? 0}", Colors.green),
-                    _buildStatCard("Đang quá hạn", "${data['dangQuaHan'] ?? 0}", Colors.red),
-                  ],
-                );
-              },
-            ),
+            _buildSectionTitle("Phân bổ thể loại sách (%)"),
+            SizedBox(height: 250, child: _buildPieChart()),
             const SizedBox(height: 30),
-            _buildSectionTitle("TÀI CHÍNH KHO (NĂM NAY)"),
-            FutureBuilder<Map<String, dynamic>>(
-              future: _api.getStorekeeperReport(),
-              builder: (ctx, snapshot) {
-                if (!snapshot.hasData) return const LinearProgressIndicator();
-                final data = snapshot.data!;
-                final chi = data['tongChiNhapSach'] ?? 0;
-                final thu = data['tongThuThanhLy'] ?? 0;
-                final loiNhuan = data['loiNhuan'] ?? 0;
-                final currency = NumberFormat("#,##0", "vi_VN");
 
-                return Column(
-                  children: [
-                    Card(
-                      elevation: 4,
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                            backgroundColor: Colors.orange,
-                            child: Icon(Icons.shopping_cart, color: Colors.white)),
-                        title: const Text("Tổng chi nhập sách"),
-                        trailing: Text("${currency.format(chi)} đ",
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    Card(
-                      elevation: 4,
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                            backgroundColor: Colors.green,
-                            child: Icon(Icons.monetization_on, color: Colors.white)),
-                        title: const Text("Tổng thu thanh lý"),
-                        trailing: Text("${currency.format(thu)} đ",
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                          color: loiNhuan >= 0 ? Colors.green[50] : Colors.red[50],
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: loiNhuan >= 0 ? Colors.green : Colors.red)),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text("Cân đối thu chi:",
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          Text("${currency.format(loiNhuan)} đ",
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: loiNhuan >= 0 ? Colors.green : Colors.red)),
-                        ],
-                      ),
-                    )
-                  ],
-                );
-              },
-            ),
+            _buildSectionTitle("Lượt mượn theo tháng (Năm nay)"),
+            SizedBox(height: 300, child: _buildBarChart()),
+            const SizedBox(height: 30),
+
+            _buildSectionTitle("Top 5 Sách mượn nhiều nhất"),
+            _buildTopBooksList(),
+            const SizedBox(height: 30),
+
+            _buildSectionTitle("Top 5 Độc giả tích cực"),
+            _buildTopReadersList(),
+            const SizedBox(height: 30),
           ],
         ),
       ),
@@ -103,31 +58,131 @@ class AdminReportsScreen extends StatelessWidget {
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(title,
-          style: TextStyle(
-              fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700])),
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueAccent)),
     );
   }
 
-  Widget _buildStatCard(String label, String value, Color color) {
-    return Expanded(
-      child: Card(
-        elevation: 2,
-        color: color,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            children: [
-              Text(value,
-                  style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-              const SizedBox(height: 5),
-              Text(label, style: const TextStyle(color: Colors.white70)),
-            ],
+  // --- Biểu đồ tròn ---
+  Widget _buildPieChart() {
+    return FutureBuilder<List<dynamic>>(
+      future: _futureCategory,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        final data = snapshot.data!;
+
+        return PieChart(
+          PieChartData(
+            sectionsSpace: 2, // Khoảng cách giữa các miếng
+            centerSpaceRadius: 40, // Bán kính vòng tròn rỗng ở giữa
+            pieTouchData: PieTouchData(enabled: true),
+            // Tăng kích thước bao quanh để chữ không bị cắt khi đẩy ra ngoài
+            sections: data.map((item) {
+              final double val = (item['phanTram'] as num).toDouble();
+              final String title = item['theLoai'];
+
+              return PieChartSectionData(
+                color: Colors.primaries[data.indexOf(item) % Colors.primaries.length],
+                value: val,
+                // Hiển thị Tên thể loại + %
+                title: '$title\n${val.toStringAsFixed(1)}%',
+                radius: 60, // Bán kính của miếng biểu đồ
+
+                // --- QUAN TRỌNG: Đẩy chữ ra ngoài ---
+                titlePositionPercentageOffset: 1.4, // 1.4 nghĩa là nằm ngoài bán kính 140%
+
+                // Style chữ khi nằm ngoài (nên để màu đen cho dễ đọc trên nền trắng)
+                titleStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87
+                ),
+              );
+            }).toList(),
           ),
-        ),
-      ),
+          swapAnimationDuration: const Duration(milliseconds: 150), // Animation mượt
+        );
+      },
+    );
+  }
+
+  // --- Biểu đồ cột ---
+  Widget _buildBarChart() {
+    return FutureBuilder<List<dynamic>>(
+      future: _futureMonthly,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        final data = snapshot.data!;
+
+        return BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            maxY: (data.map((e) => e['luotMuon'] as int).reduce((a, b) => a > b ? a : b) + 5).toDouble(),
+            barTouchData: BarTouchData(enabled: true),
+            titlesData: FlTitlesData(
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) {
+                    return Text("T${value.toInt()}", style: const TextStyle(fontSize: 10));
+                  },
+                ),
+              ),
+              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30)),
+              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            borderData: FlBorderData(show: false),
+            barGroups: data.map((item) {
+              return BarChartGroupData(
+                x: item['thang'],
+                barRods: [
+                  BarChartRodData(toY: (item['luotMuon'] as int).toDouble(), color: Colors.blue, width: 16)
+                ],
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  // --- List Top Sách ---
+  Widget _buildTopBooksList() {
+    return FutureBuilder<List<dynamic>>(
+      future: _futureTopBooks,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const CircularProgressIndicator();
+        return Column(
+          children: snapshot.data!.map((book) => Card(
+            child: ListTile(
+              leading: Image.network(ApiService.getImageUrl(book['hinhAnh']), width: 40, fit: BoxFit.cover, errorBuilder: (_,__,___)=>const Icon(Icons.book)),
+              title: Text(book['tenSach'], maxLines: 1, overflow: TextOverflow.ellipsis),
+              trailing: Chip(label: Text("${book['luotMuon']} lượt"), backgroundColor: Colors.amberAccent),
+            ),
+          )).toList(),
+        );
+      },
+    );
+  }
+
+  // --- List Top Độc Giả ---
+  Widget _buildTopReadersList() {
+    return FutureBuilder<List<dynamic>>(
+      future: _futureTopReaders,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const CircularProgressIndicator();
+        return Column(
+          children: snapshot.data!.map((user) => Card(
+            child: ListTile(
+              leading: CircleAvatar(child: Text(user['hoTen'][0])),
+              title: Text(user['hoTen']),
+              subtitle: Text("MSSV: ${user['maSV']}"),
+              trailing: Text("${user['soLanMuon']} lần mượn", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+            ),
+          )).toList(),
+        );
+      },
     );
   }
 }
