@@ -153,3 +153,5 @@ crashlytics.properties
 fabric.properties
 captures/
 output.json
+
+.env

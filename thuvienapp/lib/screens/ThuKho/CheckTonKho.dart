@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/sach.dart';
 import '../../providers/api_service.dart';
+import 'ThemSachMoi.dart';
 
 class InventoryCheckScreen extends StatefulWidget {
   const InventoryCheckScreen({Key? key}) : super(key: key);
@@ -58,17 +59,66 @@ class _InventoryCheckScreenState extends State<InventoryCheckScreen> {
     return Colors.green; // An toàn
   }
 
+  void _showEditDialog(Sach book) {
+    final txtTen = TextEditingController(text: book.tensach);
+    final txtGia = TextEditingController(text: book.giamuon.toString());
+    final txtMoTa = TextEditingController(text: book.moTa);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text("Cập nhật: ${book.tensach}"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: txtTen, decoration: InputDecoration(labelText: "Tên sách")),
+              TextField(controller: txtGia, decoration: InputDecoration(labelText: "Giá mượn"), keyboardType: TextInputType.number),
+              TextField(controller: txtMoTa, decoration: InputDecoration(labelText: "Mô tả"), maxLines: 3),
+              // Lưu ý: Không cho sửa số lượng tồn ở đây vì tồn kho phải qua Nhập/Xuất/Mượn/Trả
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text("Hủy")),
+          ElevatedButton(
+            onPressed: () async {
+              // Tạo object sách mới với thông tin đã sửa
+              Sach updatedBook = Sach(
+                masach: book.masach,
+                tensach: txtTen.text,
+                giamuon: double.tryParse(txtGia.text) ?? book.giamuon,
+                soluongton: book.soluongton, // Giữ nguyên
+                moTa: txtMoTa.text,
+                hinhanh: book.hinhanh,
+                theLoai: book.theLoai,
+              );
+
+              bool success = await _apiService.updateSach(updatedBook);
+              if (success) {
+                Navigator.pop(context);
+                _loadBooks(); // Reload lại list
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Cập nhật thành công")));
+              }
+            },
+            child: Text("Lưu thay đổi"),
+          )
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Kiểm kê kho sách"),
+        title: const Text("Quản Lý Sách & Tồn Kho"), // Đã đổi tiêu đề theo ý bạn
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),
       body: Column(
         children: [
-          // 1. Thanh tìm kiếm
+          // 1. Thanh tìm kiếm (Giữ nguyên code cũ)
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: TextField(
@@ -87,12 +137,12 @@ class _InventoryCheckScreenState extends State<InventoryCheckScreen> {
             ),
           ),
 
-          // 2. Danh sách sách
+          // 2. Danh sách sách (Đã thêm InkWell và icon Edit)
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : RefreshIndicator(
-              onRefresh: _loadBooks, // Kéo xuống để load lại
+              onRefresh: _loadBooks,
               child: _filteredBooks.isEmpty
                   ? const Center(child: Text("Không tìm thấy sách nào"))
                   : ListView.builder(
@@ -102,76 +152,117 @@ class _InventoryCheckScreenState extends State<InventoryCheckScreen> {
                   final book = _filteredBooks[index];
                   final stockColor = _getStockColor(book.soluongton);
 
-                  return Card(
-                    elevation: 2,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Row(
+                  // Bọc Card bằng InkWell để bắt sự kiện Tap vào toàn bộ thẻ
+                  return InkWell(
+                    onTap: () => _showEditDialog(book), // Nhấn vào thẻ để sửa
+                    child: Card(
+                      elevation: 2,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      child: Stack(
                         children: [
-                          // Ảnh bìa sách
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              width: 60,
-                              height: 80,
-                              color: Colors.grey[200],
-                              child: book.hinhanh != null && book.hinhanh!.isNotEmpty
-                                  ? Image.network(
-                                book.hinhanh!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported, color: Colors.grey),
-                              )
-                                  : const Icon(Icons.book, color: Colors.grey),
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-
-                          // Thông tin tên và giá
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          // Phần nội dung chính (Code giao diện cũ)
+                          Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Row(
                               children: [
-                                Text(
-                                  book.tensach,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                // Ảnh bìa sách
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    width: 60,
+                                    height: 80,
+                                    color: Colors.grey[200],
+                                    child: book.hinhanh != null &&
+                                        book.hinhanh!.isNotEmpty
+                                        ? Image.network(
+                                      book.hinhanh!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                      const Icon(
+                                          Icons.image_not_supported,
+                                          color: Colors.grey),
+                                    )
+                                        : const Icon(Icons.book,
+                                        color: Colors.grey),
+                                  ),
                                 ),
-                                const SizedBox(height: 5),
-                                Text("Mã sách: ${book.masach}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                                Text("${book.giamuon.toStringAsFixed(0)} đ", style: const TextStyle(color: Colors.blueGrey)),
+                                const SizedBox(width: 15),
+
+                                // Thông tin tên và giá
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        book.tensach,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      Text("Mã sách: ${book.masach}",
+                                          style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12)),
+                                      Text(
+                                          "${book.giamuon.toStringAsFixed(0)} đ",
+                                          style: const TextStyle(
+                                              color: Colors.blueGrey)),
+                                    ],
+                                  ),
+                                ),
+
+                                // Số lượng tồn kho (Nổi bật)
+                                Column(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: stockColor.withOpacity(0.1),
+                                        border: Border.all(
+                                            color: stockColor, width: 2),
+                                      ),
+                                      child: Text(
+                                        "${book.soluongton}",
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: stockColor,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      book.soluongton == 0
+                                          ? "Hết hàng"
+                                          : "Tồn kho",
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          color: stockColor,
+                                          fontWeight: FontWeight.bold),
+                                    )
+                                  ],
+                                )
                               ],
                             ),
                           ),
 
-                          // Số lượng tồn kho (Nổi bật)
-                          Column(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: stockColor.withOpacity(0.1),
-                                  border: Border.all(color: stockColor, width: 2),
-                                ),
-                                child: Text(
-                                  "${book.soluongton}",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: stockColor,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                book.soluongton == 0 ? "Hết hàng" : "Tồn kho",
-                                style: TextStyle(fontSize: 10, color: stockColor, fontWeight: FontWeight.bold),
-                              )
-                            ],
-                          )
+                          // Icon Edit nhỏ ở góc trên bên phải
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: IconButton(
+                              icon: const Icon(Icons.edit,
+                                  size: 20, color: Colors.blue),
+                              onPressed: () => _showEditDialog(book),
+                            ),
+                          ),
                         ],
                       ),
                     ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/sach.dart';
 import '../../models/user.dart';
 import '../../providers/api_service.dart';
+import 'ThemSachMoi.dart';
 
 class ImportGoodsScreen extends StatefulWidget {
   final User user;
@@ -70,10 +71,27 @@ class _ImportGoodsScreenState extends State<ImportGoodsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Thêm sách vào phiếu"),
+        title: const Text("Chọn sách nhập kho"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Nút thêm sách mới nếu chưa có
+            OutlinedButton.icon(
+              icon: const Icon(Icons.add),
+              label: const Text("Sách chưa có? Thêm mới ngay"),
+              onPressed: () async {
+                Navigator.pop(context); // Đóng dialog hiện tại
+                final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ThemSachMoiScreen())
+                );
+                if (result == true) {
+                  _loadBooks(); // Load lại danh sách dropdown nếu có sách mới
+                }
+              },
+            ),
+            const SizedBox(height: 10),
+            const Divider(),
             DropdownButton<Sach>(
               isExpanded: true,
               hint: Text("Chọn sách"),

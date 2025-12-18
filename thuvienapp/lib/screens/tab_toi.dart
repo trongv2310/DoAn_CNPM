@@ -81,8 +81,8 @@ class TabToi extends StatelessWidget {
               _buildMenuItem(context, Icons.delete_sweep, "Thanh lý sách", () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => LiquidationScreen(user: userProvider)));
               }),
-              _buildMenuItem(context, Icons.inventory, "Kiểm kê kho", () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryCheckScreen()));
+              _buildMenuItem(context, Icons.library_books, "Quản lý sách & Tồn kho", () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const InventoryCheckScreen())); // Class đã đổi logic ở trên
               }),
               _buildMenuItem(context, Icons.history, "Lịch sử nhập", () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => ImportHistoryScreen(user: userProvider)));
