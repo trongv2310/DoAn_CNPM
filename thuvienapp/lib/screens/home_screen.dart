@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'NotificationScreen.dart';
 import '../models/sach.dart';
 import '../models/user.dart';
 import '../providers/api_service.dart';
@@ -24,12 +24,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 1;
+  int _newBooksCount = 0;
   late Future<List<Sach>> _futureSach;
 
   @override
   void initState() {
     super.initState();
     _futureSach = ApiService().fetchSaches();
+    _fetchNotificationCount();
+  }
+
+  // --- THÊM: Hàm lấy dữ liệu từ API ---
+  void _fetchNotificationCount() async {
+    try {
+      var newsList = await ApiService().fetchNewBooksNews();
+      if (mounted) {
+        setState(() {
+          _newBooksCount = newsList.length;
+        });
+      }
+    } catch (e) {
+      print("Lỗi tải thông báo: $e");
+    }
   }
 
   void _onItemTapped(int index) {
@@ -297,7 +313,54 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 5), // Khoảng cách nhỏ
+
+            // --- THÊM MỚI: NÚT THÔNG BÁO ---
+            Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_none_outlined,
+                      color: Colors.grey, size: 28),
+                  onPressed: () {
+                    // Khi bấm vào thì reset số thông báo về 0 (đã xem)
+                    setState(() {
+                      _newBooksCount = 0;
+                    });
+
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const NotificationScreen()));
+                  },
+                ),
+                // Chỉ hiển thị badge nếu số lượng > 0
+                if (_newBooksCount > 0)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white, width: 1), // Viền trắng cho rõ
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        '$_newBooksCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            // -------------------------------
             Stack(
               children: [
                 IconButton(
