@@ -67,7 +67,64 @@ class ApiService {
       };
     }
   }
+// Thêm sách mới (Full thông tin)
+  Future<bool> addSach(Sach sach) async {
+    final url = Uri.parse('$baseUrl/Sach');
+    try {
+      // Chuyển đổi object Sach thành JSON.
+      // Lưu ý: Cần đảm bảo model Sach có hàm toJson() hoặc tự build map
+      final body = jsonEncode({
+        "Tensach": sach.tensach,
+        "Matg": 1, // Mặc định hoặc cần UI chọn Tác giả
+        "Manxb": 1, // Mặc định hoặc cần UI chọn NXB
+        "Hinhanh": sach.hinhanh,
+        "Theloai": sach.theLoai,
+        "Mota": sach.moTa,
+        "Giamuon": sach.giamuon,
+        "Soluongton": sach.soluongton,
+        "Trangthai": "Sẵn sàng"
+      });
 
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: body,
+      );
+      return response.statusCode == 201 || response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi thêm sách: $e");
+      return false;
+    }
+  }
+
+  // Cập nhật thông tin sách
+  Future<bool> updateSach(Sach sach) async {
+    final url = Uri.parse('$baseUrl/Sach/${sach.masach}');
+    try {
+      final body = jsonEncode({
+        "Masach": sach.masach, // Quan trọng: Phải gửi kèm ID
+        "Tensach": sach.tensach,
+        "Matg": 1, // Giữ nguyên hoặc update nếu có UI
+        "Manxb": 1,
+        "Hinhanh": sach.hinhanh,
+        "Theloai": sach.theLoai,
+        "Mota": sach.moTa,
+        "Giamuon": sach.giamuon,
+        "Soluongton": sach.soluongton,
+        "Trangthai": "Sẵn sàng"
+      });
+
+      final response = await http.put(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: body,
+      );
+      return response.statusCode == 204 || response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi update sách: $e");
+      return false;
+    }
+  }
   Future<bool> doiMatKhau(int maTaiKhoan, String matKhauCu, String matKhauMoi) async {
     final url = Uri.parse('$baseUrl/Auth/doi-mat-khau');
     try {
