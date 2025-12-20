@@ -3,6 +3,10 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+// Đảm bảo import đúng đường dẫn tới model và api service của bạn
+import '../models/sach.dart';
+import '../providers/api_service.dart';
+
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
 
@@ -18,6 +22,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   final List<Content> _history = [];
   bool _loading = false;
   bool _isInitSuccess = false;
+  bool _isInitializing = true; // Thêm biến loading khi đang khởi tạo
 
   @override
   void initState() {
@@ -25,54 +30,81 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     _initializeGemini();
   }
 
-  void _initializeGemini() {
+  // Chuyển thành Future<void> và async để chờ lấy dữ liệu
+  Future<void> _initializeGemini() async {
     final apiKey = dotenv.env['GEMINI_API_KEY'];
 
     if (apiKey == null || apiKey.isEmpty) {
       debugPrint("LỖI: Chưa cấu hình GEMINI_API_KEY trong file .env");
-      setState(() => _isInitSuccess = false);
+      setState(() {
+        _isInitSuccess = false;
+        _isInitializing = false;
+      });
       return;
     }
 
     try {
-      // Nội dung chỉ dẫn cho AI (Giữ nguyên nội dung của bạn)
+      // BƯỚC 1: LẤY DỮ LIỆU TỪ DB THÔNG QUA API
+      // (Giả sử ApiService có hàm getAllSach hoặc getBooks trả về List<Sach>)
+      // Bạn cần kiểm tra lại tên hàm trong ApiService của bạn
+      List<Sach> danhSachSach = [];
+      try {
+        danhSachSach = await ApiService().fetchSaches();
+      } catch (e) {
+        debugPrint("Lỗi lấy dữ liệu sách cho AI: $e");
+        // Nếu lỗi API, AI vẫn hoạt động nhưng không có data sách mới nhất
+      }
+
+      // BƯỚC 2: CHUYỂN DỮ LIỆU THÀNH CHUỖI VĂN BẢN ĐỂ AI HIỂU
+      String databaseContext = "";
+      if (danhSachSach.isNotEmpty) {
+        databaseContext = danhSachSach.map((s) {
+          // Chỉ lấy những trường cần thiết để tiết kiệm token
+          return "- Tên: ${s.tensach} | Tác giả: ${s.tenTacGia} | Thể loại: ${s.theLoai} | Tồn kho: ${s.soluongton}";
+        }).join("\n");
+      } else {
+        databaseContext = "Hiện chưa cập nhật được danh sách sách từ hệ thống.";
+      }
+
+      // BƯỚC 3: CẬP NHẬT SYSTEM INSTRUCTION
       final systemInstruction = """
-Bạn là "Thủ thư tư vấn AI" chuyên nghiệp của Hệ thống Thư viện. Nhiệm vụ của bạn là khơi gợi niềm đam mê đọc sách và hỗ trợ độc giả mượn sách.
+Bạn là "Trợ lý tư vấn AI" của hệ thống quản lý thư viện.
+Nhiệm vụ: Hỗ trợ tìm sách, báo giá và giải đáp thắc mắc dựa trên dữ liệu thực tế bên dưới.
 
-KIẾN THỨC VỀ KHO SÁCH:
-- Bạn biết thông tin: Tên sách, Tác giả, Thể loại, NXB, và số lượng tồn kho.
-- Bạn hiểu rõ nội dung các thể loại sách để đưa ra lời khuyên phù hợp.
+--- DỮ LIỆU KHO SÁCH THỰC TẾ (DB) ---
+Dưới đây là danh sách các sách hiện có trong thư viện. Bạn CHỈ ĐƯỢC tư vấn các sách có trong danh sách này. Nếu sách có tồn kho = 0, hãy báo là tạm hết hàng.
+$databaseContext
+-------------------------------------
 
-CHÍNH SÁCH GIÁ THUÊ & QUY ĐỊNH (Quan trọng):
-- Giá thuê cơ bản: Đồng giá 5.000 VNĐ / 7 ngày cho các loại sách thông thường.
-- Sách mới/Sách hiếm: 10.000 VNĐ / 7 ngày.
-- Tiền đặt cọc: Độc giả cần đặt cọc 50.000 VNĐ cho mỗi lần mượn (số tiền này sẽ được hoàn lại khi trả sách).
-- Phí quá hạn: 2.000 VNĐ / mỗi ngày trả muộn.
-- Miễn phí: Đối với các loại sách giáo khoa hoặc tài liệu nghiên cứu nội bộ.
+CHÍNH SÁCH & GIÁ (Cố định):
+- Giá thuê: 5.000 VNĐ/7 ngày (Sách thường), 10.000 VNĐ/7 ngày (Sách hiếm/mới).
+- Cọc: 50.000 VNĐ/quyển (Hoàn lại khi trả).
+- Phí trễ: 2.000 VNĐ/ngày.
 
-NHIỆM VỤ CỦA BẠN:
-1. Gợi ý sách dựa trên sở thích và **luôn chủ động báo giá thuê** cho độc giả khi giới thiệu.
-2. Giải thích rõ về số tiền đặt cọc để độc giả chuẩn bị trước khi đến thư viện.
-3. Hướng dẫn quy trình: Chọn sách -> Xem giá & cọc -> Thêm vào giỏ hàng -> Chờ duyệt.
-
-PHONG CÁCH TRẢ LỜI:
-- Thân thiện, tận tâm, xưng "Trợ lý Thủ thư".
-- Khi báo giá, hãy dùng đơn vị "VNĐ" rõ ràng.
-- Ví dụ: "Cuốn sách 'Đắc Nhân Tâm' thuộc thể loại Kỹ năng sống hiện đang có sẵn. Giá thuê chỉ 5.000 VNĐ cho 1 tuần, bạn chỉ cần cọc thêm một chút phí nhỏ thôi nhé!"
+QUY TẮC TRẢ LỜI:
+1. Khi khách hỏi sách, hãy tra cứu trong [DỮ LIỆU KHO SÁCH THỰC TẾ] ở trên.
+2. Nếu sách không có trong danh sách, hãy xin lỗi và bảo thư viện chưa nhập sách này.
+3. Luôn báo giá thuê và tiền cọc rõ ràng bằng đơn vị VNĐ.
+4. Trả lời ngắn gọn, thân thiện.
 """;
 
-      // Truyền systemInstruction vào và sửa tên model
       _model = GenerativeModel(
-        model: 'gemini-2.5-flash',
+        model: 'gemini-2.5-flash', // Khuyên dùng 1.5-flash vì context window lớn hơn, chứa được nhiều sách hơn
         apiKey: apiKey,
-        systemInstruction: Content.system(systemInstruction), //Dòng này giúp AI nhận việc
+        systemInstruction: Content.system(systemInstruction),
       );
 
       _chatSession = _model.startChat(history: _history);
-      setState(() => _isInitSuccess = true);
+      setState(() {
+        _isInitSuccess = true;
+        _isInitializing = false;
+      });
     } catch (e) {
       debugPrint("Lỗi khởi tạo Gemini: $e");
-      setState(() => _isInitSuccess = false);
+      setState(() {
+        _isInitSuccess = false;
+        _isInitializing = false;
+      });
     }
   }
 
@@ -88,7 +120,6 @@ PHONG CÁCH TRẢ LỜI:
     _scrollToBottom();
 
     try {
-      // Gửi tin nhắn đến Gemini
       final response = await _chatSession.sendMessage(Content.text(message));
 
       setState(() {
@@ -98,7 +129,6 @@ PHONG CÁCH TRẢ LỜI:
     } catch (e) {
       setState(() {
         _loading = false;
-        // Báo lỗi chi tiết nếu có sự cố
         debugPrint("Chatbot Error: $e");
       });
 
@@ -124,6 +154,23 @@ PHONG CÁCH TRẢ LỜI:
 
   @override
   Widget build(BuildContext context) {
+    // Hiển thị màn hình chờ khi đang tải dữ liệu sách và khởi tạo AI
+    if (_isInitializing) {
+      return Scaffold(
+        appBar: AppBar(title: const Text("Trợ lý Thư Viện AI")),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 10),
+              Text("Đang tải dữ liệu sách...")
+            ],
+          ),
+        ),
+      );
+    }
+
     if (!_isInitSuccess) {
       return Scaffold(
         appBar: AppBar(title: const Text("Lỗi Cấu Hình")),
@@ -131,7 +178,7 @@ PHONG CÁCH TRẢ LỜI:
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: Text(
-              "Không thể khởi tạo AI. Vui lòng kiểm tra lại GEMINI_API_KEY trong file .env và đảm bảo model 'gemini-1.5-flash' được hỗ trợ.",
+              "Không thể khởi tạo AI. Vui lòng kiểm tra kết nối mạng hoặc API Key.",
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.red[700]),
             ),
@@ -153,8 +200,10 @@ PHONG CÁCH TRẢ LỜI:
             onPressed: () {
               setState(() {
                 _history.clear();
-                _chatSession = _model.startChat(history: _history);
+                // Gọi lại initialize để cập nhật dữ liệu sách mới nhất nếu có
+                _isInitializing = true;
               });
+              _initializeGemini();
             },
             tooltip: "Làm mới cuộc trò chuyện",
           )
@@ -164,7 +213,7 @@ PHONG CÁCH TRẢ LỜI:
         children: [
           Expanded(
             child: history.isEmpty
-                ? const Center(child: Text("Hỏi tôi bất cứ điều gì về thư viện!"))
+                ? const Center(child: Text("Hỏi tôi về các sách đang có trong thư viện!"))
                 : ListView.builder(
               controller: _scrollController,
               itemCount: history.length,
@@ -191,8 +240,7 @@ PHONG CÁCH TRẢ LỜI:
                       ),
                     ),
                     constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width * 0.8
-                    ),
+                        maxWidth: MediaQuery.of(context).size.width * 0.8),
                     child: isUser
                         ? Text(text, style: const TextStyle(fontSize: 16))
                         : MarkdownBody(
