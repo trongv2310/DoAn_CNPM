@@ -143,5 +143,98 @@ namespace API_ThuVien.Controllers
 
             return Ok(list);
         }
+        // [POST] Gửi đánh giá cho một cuốn sách
+        [HttpPost("gui-danh-gia")]
+        public async Task<IActionResult> GuiDanhGia([FromBody] DanhGiaRequest req)
+        {
+            // Kiểm tra xem sinh viên đã đánh giá sách này chưa (nếu muốn mỗi người chỉ đánh giá 1 lần)
+            var exist = await _context.Danhgiasaches
+                .FirstOrDefaultAsync(d => d.Masv == req.MaSinhVien && d.Masach == req.MaSach);
+
+            if (exist != null)
+            {
+                // Nếu đã có thì cập nhật lại
+                exist.Diem = req.Diem;
+                exist.Nhanxet = req.NhanXet;
+                exist.Thoigian = DateTime.Now;
+                _context.Danhgiasaches.Update(exist);
+                await _context.SaveChangesAsync();
+                return Ok(new { Message = "Đã cập nhật đánh giá của bạn!" });
+            }
+
+            // Nếu chưa có thì tạo mới
+            var dg = new Danhgiasach
+            {
+                Masach = req.MaSach,
+                Masv = req.MaSinhVien,
+                Diem = req.Diem,
+                Nhanxet = req.NhanXet,
+                Thoigian = DateTime.Now
+            };
+
+            _context.Danhgiasaches.Add(dg);
+            await _context.SaveChangesAsync();
+            return Ok(new { Message = "Cảm ơn bạn đã đánh giá sách!" });
+        }
+        // ================== QUẢN LÝ ĐÁNH GIÁ (CHO THỦ THƯ) ==================
+
+        // [GET] Lấy tất cả đánh giá (Mới nhất lên đầu)
+        [HttpGet("quan-ly-danh-gia")]
+        public async Task<IActionResult> GetAllDanhGia()
+        {
+            var list = await _context.Danhgiasaches
+                .Include(d => d.MasachNavigation)
+                .Include(d => d.MasvNavigation)
+                .OrderByDescending(d => d.Thoigian)
+                .Select(d => new DanhGiaHienThiDto
+                {
+                    MaDanhGia = d.Madanhgia, // Map ID vào đây
+                    TenSach = d.MasachNavigation.Tensach,
+                    TenSinhVien = d.MasvNavigation.Hovaten,
+                    Diem = d.Diem,
+                    NhanXet = d.Nhanxet,
+                    NgayDanhGia = d.Thoigian.HasValue ? d.Thoigian.Value.ToString("dd/MM/yyyy HH:mm") : ""
+                })
+                .ToListAsync();
+
+            return Ok(list);
+        }
+
+        // [DELETE] Xóa một đánh giá vi phạm
+        [HttpDelete("xoa-danh-gia/{id}")]
+        public async Task<IActionResult> DeleteDanhGia(int id)
+        {
+            var dg = await _context.Danhgiasaches.FindAsync(id);
+            if (dg == null) return NotFound(new { Message = "Không tìm thấy đánh giá này" });
+
+            _context.Danhgiasaches.Remove(dg);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { Message = "Đã xóa đánh giá thành công" });
+        }
+
+        // Thêm vào trong class TuongTacController
+
+        // [GET] Lấy danh sách đánh giá của một cuốn sách cụ thể
+        [HttpGet("danh-gia-sach/{maSach}")]
+        public async Task<IActionResult> GetDanhGiaTheoSach(int maSach)
+        {
+            var list = await _context.Danhgiasaches
+                .Where(d => d.Masach == maSach) // Lọc theo mã sách
+                .Include(d => d.MasvNavigation) // Join lấy tên SV
+                .OrderByDescending(d => d.Thoigian) // Mới nhất lên đầu
+                .Select(d => new DanhGiaHienThiDto
+                {
+                    MaDanhGia = d.Madanhgia,
+                    TenSach = d.MasachNavigation.Tensach,
+                    TenSinhVien = d.MasvNavigation.Hovaten,
+                    Diem = d.Diem,
+                    NhanXet = d.Nhanxet,
+                    NgayDanhGia = d.Thoigian.HasValue ? d.Thoigian.Value.ToString("dd/MM/yyyy") : ""
+                })
+                .ToListAsync();
+
+            return Ok(list);
+        }
     }
 }

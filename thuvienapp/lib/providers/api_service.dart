@@ -704,4 +704,64 @@ class ApiService {
   Future<List<dynamic>> fetchNewBooksNews() async {
     return fetchList('/Admin/news-new-books');
   }
+  Future<bool> guiDanhGiaSach(int maSach, int maSV, int diem, String nhanXet) async {
+    final url = Uri.parse('$baseUrl/TuongTac/gui-danh-gia');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "MaSach": maSach,
+          "MaSinhVien": maSV,
+          "Diem": diem,
+          "NhanXet": nhanXet
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi gửi đánh giá: $e");
+      return false;
+    }
+  }
+  // --- QUẢN LÝ ĐÁNH GIÁ (THỦ THƯ) ---
+
+  // Lấy tất cả đánh giá
+  Future<List<dynamic>> getAllReviews() async {
+    final url = Uri.parse('$baseUrl/TuongTac/quan-ly-danh-gia');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return [];
+    } catch (e) {
+      print("Lỗi lấy danh sách đánh giá: $e");
+      return [];
+    }
+  }
+  // Xóa đánh giá
+  Future<bool> deleteReview(int maDanhGia) async {
+    final url = Uri.parse('$baseUrl/TuongTac/xoa-danh-gia/$maDanhGia');
+    try {
+      final response = await http.delete(url);
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi xóa đánh giá: $e");
+      return false;
+    }
+  }
+  // Lấy danh sách đánh giá theo ID sách
+  Future<List<dynamic>> getReviewsByBookId(int maSach) async {
+    final url = Uri.parse('$baseUrl/TuongTac/danh-gia-sach/$maSach');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return [];
+    } catch (e) {
+      print("Lỗi lấy review sách: $e");
+      return [];
+    }
+  }
 }
