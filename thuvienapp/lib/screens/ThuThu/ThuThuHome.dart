@@ -9,6 +9,7 @@ import 'TraSachPhat.dart';
 import 'HoTroDocGia.dart';
 import '../Admin/BaoCaoTongHop.dart';
 import 'DuyetGiaHan.dart';
+import 'QuanLyDanhGia.dart'; // <--- MỚI: Import màn hình quản lý đánh giá
 
 class LibrarianHomeScreen extends StatefulWidget {
   final User user;
@@ -107,11 +108,10 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
 
             const SizedBox(height: 16),
 
-            // [CẬP NHẬT] Thẻ 3: Duyệt Gia Hạn
+            // Thẻ 3: Duyệt Gia Hạn
             _buildListCard(
               context,
               title: "Duyệt gia hạn",
-              // SỬA Ở ĐÂY: Thêm ?? 0 để tránh hiển thị null
               subtitle: _isLoading ? "Đang tải..." : "${_stats['yeuCauGiaHan'] ?? 0} yêu cầu gia hạn",
               icon: Icons.update,
               color: Colors.purple,
@@ -140,7 +140,23 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
 
             const SizedBox(height: 16),
 
-            // Thẻ 5: Thống kê
+            // --- [MỚI] Thẻ 5: Quản lý đánh giá ---
+            _buildListCard(
+              context,
+              title: "Quản lý đánh giá",
+              subtitle: "Xem và xóa đánh giá vi phạm",
+              icon: Icons.rate_review,
+              color: Colors.teal, // Chọn màu khác biệt
+              isBadgeVisible: false, // Hiện tại chưa có thống kê đánh giá mới
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const QuanLyDanhGiaScreen()));
+              },
+            ),
+            // -------------------------------------
+
+            const SizedBox(height: 16),
+
+            // Thẻ 6: Thống kê
             _buildListCard(
               context,
               title: "Thống kê",
