@@ -422,10 +422,19 @@ namespace API_ThuVien.Controllers
         [HttpGet("approval-stats")]
         public async Task<IActionResult> GetApprovalStats()
         {
+            // Đếm số lượng theo trạng thái cụ thể
             int choDuyet = await _context.Phieumuons.CountAsync(p => p.Trangthai == "Chờ duyệt");
             int tuChoi = await _context.Phieumuons.CountAsync(p => p.Trangthai == "Từ chối");
-            int daDuyet = await _context.Phieumuons.CountAsync(p => p.Trangthai != "Chờ duyệt" && p.Trangthai != "Từ chối");
-            return Ok(new { ChoDuyet = choDuyet, DaDuyet = daDuyet, TuChoi = tuChoi });
+
+            // Đã duyệt bao gồm: Đang mượn, Đã trả, Quá hạn, Chờ trả (Tất cả trừ Chờ duyệt và Từ chối)
+            int daDuyet = await _context.Phieumuons.CountAsync(p =>
+                p.Trangthai == "Đang mượn" ||
+                p.Trangthai == "Đã trả" ||
+                p.Trangthai == "Quá hạn" ||
+                p.Trangthai == "Chờ trả");
+
+            // Trả về JSON (Lưu ý tên biến viết hoa hay thường để khớp với Flutter)
+            return Ok(new { choDuyet = choDuyet, daDuyet = daDuyet, tuChoi = tuChoi });
         }
 
         [HttpGet("history-by-type")]
@@ -569,6 +578,44 @@ namespace API_ThuVien.Controllers
             {
                 return StatusCode(500, new { success = false, message = "Lỗi hệ thống: " + ex.Message });
             }
+        }
+        // --- [MỚI] API: HỦY YÊU CẦU GIA HẠN (Dành cho Độc giả) ---
+        [HttpPost("cancel-extension")]
+        public async Task<IActionResult> CancelExtension([FromBody] DuyetGiaHanDto request)
+        {
+            // DuyetGiaHanDto chứa MaPhieu và MaSach là đủ dùng
+            var chiTiet = await _context.Chitietphieumuons
+                .FirstOrDefaultAsync(ct => ct.Mapm == request.MaPhieu && ct.Masach == request.MaSach);
+
+            if (chiTiet == null)
+                return NotFound(new { success = false, message = "Không tìm thấy sách trong phiếu mượn." });
+
+            if (chiTiet.Trangthaigiahan != "Chờ duyệt")
+                return BadRequest(new { success = false, message = "Yêu cầu này đã được xử lý hoặc không tồn tại." });
+
+            // Reset trạng thái gia hạn về null
+            chiTiet.Trangthaigiahan = null;
+            chiTiet.Ngaygiahanmongmuon = null;
+
+            await _context.SaveChangesAsync();
+            return Ok(new { success = true, message = "Đã hủy yêu cầu gia hạn thành công." });
+        }
+        // --- [MỚI] API TỪ CHỐI PHIẾU MƯỢN ---
+        [HttpPost("reject/{mapm}")]
+        public async Task<IActionResult> RejectBorrowRequest(int mapm, [FromQuery] int maThuThuDuyet)
+        {
+            var phieuMuon = await _context.Phieumuons.FindAsync(mapm);
+            if (phieuMuon == null) return NotFound(new { message = "Không tìm thấy phiếu mượn." });
+
+            // Chỉ từ chối được khi đang chờ duyệt
+            if (phieuMuon.Trangthai != "Chờ duyệt")
+                return BadRequest(new { message = "Phiếu này không ở trạng thái chờ duyệt." });
+
+            phieuMuon.Trangthai = "Từ chối";
+            phieuMuon.Matt = maThuThuDuyet; // Lưu lại ai là người từ chối
+
+            await _context.SaveChangesAsync();
+            return Ok(new { success = true, message = "Đã từ chối phiếu mượn." });
         }
     }
 }

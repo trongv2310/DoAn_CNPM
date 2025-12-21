@@ -30,14 +30,34 @@ class _ApproveBorrowScreenState extends State<ApproveBorrowScreen> {
 
   void _refreshAll() {
     setState(() {
-      _listFuture = _api.getPendingBorrowRequests(); // Load danh sách chờ
+      // CẬP NHẬT LOGIC LẤY DỮ LIỆU
+      _listFuture = _api.getPendingBorrowRequests().then((list) {
+        // Ngay khi lấy được list chờ duyệt, cập nhật ngay số liệu "Chờ duyệt"
+        if (mounted) {
+          setState(() {
+            _stats['choDuyet'] = list.length;
+          });
+        }
+        return list;
+      });
     });
-    _loadStats(); // Load số liệu thống kê
+    _loadStats();
   }
 
   Future<void> _loadStats() async {
-    final stats = await _api.getApprovalStats();
-    if(mounted) setState(() => _stats = stats);
+    try {
+      final stats = await _api.getApprovalStats();
+      if (mounted) {
+        setState(() {
+          // Gộp số liệu từ API, nhưng ưu tiên số lượng thực tế của list chờ duyệt nếu API chậm
+          _stats['daDuyet'] = stats['daDuyet'] ?? 0;
+          _stats['tuChoi'] = stats['tuChoi'] ?? 0;
+          // _stats['choDuyet'] đã được update chính xác ở _listFuture trên
+        });
+      }
+    } catch (e) {
+      print("Lỗi load stats: $e");
+    }
   }
 
   // Xử lý duyệt
@@ -51,27 +71,23 @@ class _ApproveBorrowScreenState extends State<ApproveBorrowScreen> {
     }
   }
 
-  // Xử lý từ chối (Cần thêm API từ chối ở bước sau, tạm thời giả lập UI reload)
-  void _reject(int maPhieu) {
-    // TODO: Bạn nên thêm API RejectRequest(maPhieu) vào Backend và Service tương tự ApproveRequest
-    // Ở đây ta giả lập reload để thấy sự thay đổi nếu có API
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Xác nhận từ chối"),
-        content: const Text("Bạn có chắc muốn từ chối yêu cầu này không?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Hủy")),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Chức năng từ chối đang phát triển")));
-            },
-            child: const Text("Từ chối", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+  // Hàm xử lý TỪ CHỐI
+  void _reject(int maPhieu) async {
+    // Giả sử lấy ID thủ thư từ Provider hoặc fix cứng tạm thời
+    // final user = Provider.of<UserProvider>(context, listen: false).user;
+    int maThuThu = 1; // Thay bằng ID thực tế của user đăng nhập
+
+    bool success = await _api.rejectRequest(maPhieu, maThuThu);
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Đã từ chối phiếu mượn"), backgroundColor: Colors.orange));
+        _refreshAll(); // Tải lại danh sách và số liệu
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Lỗi khi từ chối"), backgroundColor: Colors.red));
+      }
+    }
   }
 
   // Chuyển sang màn hình xem lịch sử
@@ -111,11 +127,11 @@ class _ApproveBorrowScreenState extends State<ApproveBorrowScreen> {
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
                   children: [
-                    _buildStatCard("Chờ duyệt", _stats['choDuyet'] ?? 0, Colors.orange, const Color(0xFFFFF3E0), null), // Không cần bấm
+                    _buildStatCard("Chờ duyệt", _stats['choDuyet']!, Colors.orange, const Color(0xFFFFF3E0), null), // Không cần bấm
                     const SizedBox(width: 10),
-                    _buildStatCard("Đã duyệt", _stats['daDuyet'] ?? 0, Colors.green, const Color(0xFFE8F5E9), () => _viewHistory('approved', 'Lịch Sử Đã Duyệt')),
+                    _buildStatCard("Đã duyệt", _stats['daDuyet']!, Colors.green, const Color(0xFFE8F5E9), () => _viewHistory('approved', 'Lịch Sử Đã Duyệt')),
                     const SizedBox(width: 10),
-                    _buildStatCard("Từ chối", _stats['tuChoi'] ?? 0, Colors.red, const Color(0xFFFFEBEE), () => _viewHistory('rejected', 'Lịch Sử Từ Chối')),
+                    _buildStatCard("Từ chối", _stats['tuChoi']!, Colors.red, const Color(0xFFFFEBEE), () => _viewHistory('rejected', 'Lịch Sử Từ Chối')),
                   ],
                 ),
               ),

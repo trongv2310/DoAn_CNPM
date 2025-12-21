@@ -52,6 +52,17 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // Hàm xử lý chế độ khách
+  void _loginAsGuest() {
+    // Đặt user trong Provider là null để biểu thị là khách
+    Provider.of<UserProvider>(context, listen: false).logout();
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomeScreen(user: null)), // Cần sửa HomeScreen để chấp nhận user null
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -86,6 +97,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: _isLoading ? CircularProgressIndicator(color: Colors.white) : Text("Đăng Nhập"),
                   ),
                 ),
+
+                // --- THÊM ĐOẠN NÀY ---
+                const SizedBox(height: 15),
+                TextButton(
+                  onPressed: _loginAsGuest,
+                  child: const Text("Bỏ qua đăng nhập (Chế độ khách)",
+                      style: TextStyle(color: Colors.grey, decoration: TextDecoration.underline)),
+                ),
+                // ---------------------
+                const SizedBox(height: 10),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

@@ -33,6 +33,37 @@ class _TabTuSachState extends State<TabTuSach> {
     await _futureHistory;
   }
 
+  // --- [MỚI] HÀM XỬ LÝ HỦY GIA HẠN ---
+  void _handleHuyGiaHan(BorrowedBookHistory item) async {
+    bool confirm = await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Hủy gia hạn?"),
+        content: const Text("Bạn có chắc chắn muốn hủy yêu cầu gia hạn cho cuốn sách này không?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Không")),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Đồng ý")),
+        ],
+      ),
+    ) ?? false;
+
+    if (confirm) {
+      final success = await _apiService.huyYeuCauGiaHan(item.maPhieu, item.maSach);
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Đã hủy yêu cầu gia hạn."), backgroundColor: Colors.green),
+        );
+        _handleRefresh(); // Tải lại danh sách để cập nhật giao diện
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Lỗi: Không thể hủy yêu cầu."), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   // --- HÀM TÍNH TIỀN PHẠT (CẢ THỰC TẾ VÀ TẠM TÍNH) ---
   double _calculateFine(BorrowedBookHistory item) {
     if (item.tienPhat > 0) return item.tienPhat;
@@ -311,6 +342,7 @@ class _TabTuSachState extends State<TabTuSach> {
         final item = books[index];
         String imageUrl = ApiService.getImageUrl(item.hinhAnh);
 
+        bool isWaitingExtension = item.trangThaiGiaHan == "Chờ duyệt";
         bool isLate = item.trangThai.toLowerCase().contains("quá hạn");
         Color statusColor = _getStatusColor(item.trangThai);
         Color statusBgColor = statusColor.withOpacity(0.1);
@@ -365,6 +397,29 @@ class _TabTuSachState extends State<TabTuSach> {
                               fontWeight: isLate ? FontWeight.bold : FontWeight.normal
                           ),
                         ),
+                        // --- [MỚI] HIỂN THỊ TÍN HIỆU CHỜ GIA HẠN ---
+                        if (isWaitingExtension)
+                          Container(
+                            margin: const EdgeInsets.only(top: 4, bottom: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange[50],
+                              border: Border.all(color: Colors.orange),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(Icons.hourglass_top, size: 12, color: Colors.deepOrange),
+                                SizedBox(width: 4),
+                                Text(
+                                  "Đang chờ gia hạn",
+                                  style: TextStyle(fontSize: 12, color: Colors.deepOrange, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        // --------------------------------------------
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -398,8 +453,22 @@ class _TabTuSachState extends State<TabTuSach> {
                                       ),
                                     ),
 
+                                  if (isWaitingExtension)
+                                    SizedBox(
+                                      height: 30,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.redAccent, // Màu đỏ cho nút hủy
+                                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                                          minimumSize: const Size(60, 30),
+                                        ),
+                                        onPressed: () => _handleHuyGiaHan(item),
+                                        child: const Text("Hủy gia hạn", style: TextStyle(fontSize: 11, color: Colors.white)),
+                                      ),
+                                    ),
+
                                   // --- Nút Gia hạn (Không hiện khi quá hạn, chờ duyệt, chờ trả) ---
-                                  if (!isLate && item.trangThai != "Chờ duyệt" && item.trangThai != "Chờ trả")
+                                  if (!isLate && item.trangThai != "Chờ duyệt" && item.trangThai != "Chờ trả" && !isWaitingExtension)
                                     SizedBox(
                                       height: 30,
                                       child: ElevatedButton(
@@ -412,7 +481,7 @@ class _TabTuSachState extends State<TabTuSach> {
                                   if (!isLate && item.trangThai != "Chờ duyệt" && item.trangThai != "Chờ trả") const SizedBox(width: 8),
 
                                   // --- Nút Trả sách (Không hiện khi chờ duyệt, chờ trả) ---
-                                  if (item.trangThai != "Chờ duyệt" && item.trangThai != "Chờ trả")
+                                  if (item.trangThai != "Chờ duyệt" && item.trangThai != "Chờ trả" && !isWaitingExtension)
                                     SizedBox(
                                       height: 30,
                                       child: ElevatedButton(

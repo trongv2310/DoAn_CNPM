@@ -7,7 +7,7 @@ import '../screens/ChiTietSach.dart';
 class BookSection extends StatelessWidget {
   final String title;
   final List<Sach> books;
-  final User user;
+  final User? user;
   final VoidCallback? onSeeMore;
 
   const BookSection({
