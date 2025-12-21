@@ -3,6 +3,9 @@ import 'package:http/http.dart' as http;
 import '../models/sach.dart';
 import '../models/user.dart';
 import '../models/borrowed_book_history.dart';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 // DTO: Class dùng để gửi yêu cầu mượn
 class SachMuonRequest {
@@ -332,6 +335,125 @@ class ApiService {
       final response = await http.get(url);
       return response.statusCode == 200 ? json.decode(response.body) : [];
     } catch (e) {
+      return [];
+    }
+  }
+// Upload ảnh lên server
+  Future<String? > uploadImage(File imageFile) async {
+    final url = Uri.parse('$baseUrl/Sach/upload-image');
+    try {
+      var request = http.MultipartRequest('POST', url);
+
+      // Lấy tên file
+      String fileName = imageFile.path.split('/').last;
+
+      // Thêm file vào request
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file', // Tên parameter phải khớp với backend (IFormFile file)
+          imageFile.path,
+        ),
+      );
+
+      print("LOG: Đang upload ảnh:  $fileName");
+      print("LOG: URL: $url");
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print("LOG: Upload status: ${response.statusCode}");
+      print("LOG: Upload response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        var data = jsonDecode(response.body);
+        print("LOG: Tên file đã upload: ${data['fileName']}");
+        return data['fileName']; // Trả về tên file đã lưu trên server
+      } else {
+        print("LOG:  Upload thất bại - ${response.body}");
+        return null;
+      }
+    } catch (e) {
+      print("Lỗi upload ảnh:  $e");
+      return null;
+    }
+  }
+
+// Thêm sách với đầy đủ thông tin
+  Future<bool> addSachWithDetails({
+    required String tenSach,
+    required String theLoai,
+    required double giaMuon,
+    required int soLuongTon,
+    required String moTa,
+    required String hinhAnh,
+    required int maTacGia,
+    required int maNXB,
+  }) async {
+    final url = Uri.parse('$baseUrl/Sach');
+    try {
+      final body = jsonEncode({
+        "Tensach": tenSach,
+        "Matg": maTacGia,
+        "Manxb": maNXB,
+        "Hinhanh": hinhAnh,
+        "Theloai": theLoai,
+        "Mota": moTa,
+        "Giamuon": giaMuon,
+        "Soluongton": soLuongTon,
+        "Trangthai": "Sẵn sàng"
+      });
+
+      print("LOG Gửi thêm sách:  $body");
+
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: body,
+      );
+
+      print("LOG Response (${response.statusCode}): ${response.body}");
+
+      return response.statusCode == 201 || response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi thêm sách:  $e");
+      return false;
+    }
+  }
+
+// Lấy danh sách tác giả
+  Future<List<Map<String, dynamic>>> getTacGiaList() async {
+    final url = Uri.parse('$baseUrl/TacGia');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response. body);
+        return data.map((e) => {
+          "id": e['matg'],
+          "ten": e['tentg']
+        }).toList();
+      }
+      return [];
+    } catch (e) {
+      print("Lỗi lấy tác giả: $e");
+      return [];
+    }
+  }
+
+// Lấy danh sách NXB
+  Future<List<Map<String, dynamic>>> getNXBList() async {
+    final url = Uri.parse('$baseUrl/NhaXuatBan');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data. map((e) => {
+          "id": e['manxb'],
+          "ten": e['tennxb']
+        }).toList();
+      }
+      return [];
+    } catch (e) {
+      print("Lỗi lấy NXB: $e");
       return [];
     }
   }

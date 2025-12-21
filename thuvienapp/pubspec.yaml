@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  image_picker: ^1.0.4
+  http_parser: ^4.0.2
   
   # --- CÁC THƯ VIỆN CŨ ---
   fl_chart: ^0.63.0

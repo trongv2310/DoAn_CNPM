@@ -140,5 +140,43 @@ namespace API_ThuVien.Controllers
 
             return Ok(result);
         }
+
+        // API Upload ảnh sách
+        [HttpPost("upload-image")]
+        public async Task<IActionResult> UploadImage(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "Không có file được chọn" });
+
+            // Kiểm tra định dạng file
+            var allowedExtensions = new[] { ". jpg", ".jpeg", ".png", ".gif" };
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+                return BadRequest(new { message = "Chỉ chấp nhận file ảnh (jpg, png, gif)" });
+
+            // Kiểm tra kích thước file (giới hạn 5MB)
+            if (file.Length > 5 * 1024 * 1024)
+                return BadRequest(new { message = "File không được vượt quá 5MB" });
+
+            // Tạo tên file unique để tránh trùng
+            var fileName = $"{Guid.NewGuid()}{extension}";
+
+            // Đường dẫn lưu file - phải khớp với cấu hình trong Program.cs
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "images");
+
+            // Tạo thư mục nếu chưa có
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            // Lưu file
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            return Ok(new { fileName = fileName, message = "Upload thành công" });
+        }
     }
 }
