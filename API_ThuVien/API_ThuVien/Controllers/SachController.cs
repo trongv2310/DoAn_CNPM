@@ -88,15 +88,67 @@ namespace API_ThuVien.Controllers
             return NoContent();
         }
 
-        // POST: api/Sach
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<Sach>> PostSach(Sach sach)
-        {
-            _context.Saches.Add(sach);
-            await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetSach", new { id = sach.Masach }, sach);
+        // POST: api/Sach
+        [HttpPost]
+        public async Task<ActionResult<Sach>> PostSach([FromForm] Sach sach, IFormFile? fileAnh)
+        {
+            // 1. Xử lý lưu file ảnh (Nếu có gửi kèm)
+            if (fileAnh != null && fileAnh.Length > 0)
+            {
+                // Tạo tên file ngẫu nhiên để không bị trùng
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(fileAnh.FileName)}";
+
+                // Đường dẫn: Root_Project/images (Khớp với cấu hình trong Program.cs của bạn)
+                var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "images");
+
+                // Tạo thư mục nếu chưa có (tránh lỗi crash)
+                if (!Directory.Exists(uploadPath))
+                    Directory.CreateDirectory(uploadPath);
+
+                var filePath = Path.Combine(uploadPath, fileName);
+
+                // Lưu file vật lý
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await fileAnh.CopyToAsync(stream);
+                }
+
+                // Cập nhật tên file vào database
+                sach.Hinhanh = fileName;
+            }
+
+            // 2. Xử lý dữ liệu sách
+            // Bỏ qua validate các bảng quan hệ (vì ta chỉ gửi ID như Matg, Manxb)
+            ModelState.Remove("MatgNavigation");
+            ModelState.Remove("ManxbNavigation");
+            // Remove các collection quan hệ nếu có trong model
+            ModelState.Remove("Chitietphieumuons");
+            ModelState.Remove("Chitietphieunhaps");
+            ModelState.Remove("Chitietphieutras");
+            ModelState.Remove("Chitietthanhlies");
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                _context.Saches.Add(sach);
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction("GetSach", new { id = sach.Masach }, sach);
+            }
+            catch (Exception ex)
+            {
+                // Ghi log lỗi ra console để bạn dễ debug
+                Console.WriteLine($"Lỗi lưu sách: {ex.Message}");
+                if (ex.InnerException != null)
+                    Console.WriteLine($"Inner Error: {ex.InnerException.Message}");
+
+                return StatusCode(500, new { message = "Lỗi server: " + ex.Message });
+            }
         }
 
         // DELETE: api/Sach/5
@@ -140,5 +192,6 @@ namespace API_ThuVien.Controllers
 
             return Ok(result);
         }
+
     }
 }
