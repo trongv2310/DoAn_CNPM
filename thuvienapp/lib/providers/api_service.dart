@@ -785,26 +785,21 @@ class ApiService {
     }
   }
   Future<Map<String, int>> getLibrarianStats() async {
-    final url = Uri.parse('$baseUrl/PhieuMuon/librarian-stats');
+    final url = Uri.parse('$baseUrl/PhieuMuon/approval-stats');
     try {
       final response = await http.get(url);
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
-        // SỬA LỖI: Sử dụng int.parse hoặc ép kiểu an toàn
         return {
-          'choDuyet': (data['choDuyet'] as num?)?.toInt() ?? 0,
-          'yeuCauTra': (data['yeuCauTra'] as num?)?.toInt() ?? 0,
-          'cauHoiMoi': (data['cauHoiMoi'] as num?)?.toInt() ?? 0,
-          // Thêm dòng này để lấy số liệu gia hạn
-          'yeuCauGiaHan': (data['yeuCauGiaHan'] ?? data['YeuCauGiaHan'] as num?)?.toInt() ?? 0,
+          // Fix lỗi số 0: Kiểm tra cả key viết hoa (ChoDuyet) và viết thường (choDuyet)
+          'choDuyet': data['choDuyet'] ?? data['ChoDuyet'] ?? 0,
+          'daDuyet': data['daDuyet'] ?? data['DaDuyet'] ?? 0,
+          'tuChoi': data['tuChoi'] ?? data['TuChoi'] ?? 0,
         };
       }
-      return {'choDuyet': 0, 'yeuCauTra': 0, 'cauHoiMoi': 0, 'yeuCauGiaHan': 0};
+      return {'choDuyet': 0, 'daDuyet': 0, 'tuChoi': 0};
     } catch (e) {
-      print("Lỗi lấy thống kê: $e");
-      return {'choDuyet': 0, 'yeuCauTra': 0, 'cauHoiMoi': 0, 'yeuCauGiaHan': 0};
+      return {'choDuyet': 0, 'daDuyet': 0, 'tuChoi': 0};
     }
   }
   // Hủy yêu cầu mượn (khi còn chờ duyệt)
@@ -891,6 +886,37 @@ class ApiService {
     } catch (e) {
       print("Lỗi lấy review sách: $e");
       return [];
+    }
+  }
+  // --- [MỚI] Hủy yêu cầu gia hạn ---
+  Future<bool> huyYeuCauGiaHan(int maPhieu, int maSach) async {
+    final url = Uri.parse('$baseUrl/PhieuMuon/cancel-extension');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        // Tận dụng DTO cũ hoặc gửi JSON khớp với Backend
+        body: jsonEncode({
+          "MaPhieu": maPhieu,
+          "MaSach": maSach,
+          "DongY": false // Tham số này không quan trọng ở logic hủy, chỉ để khớp model nếu cần
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi hủy gia hạn: $e");
+      return false;
+    }
+  }
+  // [MỚI] Hàm Từ chối mượn
+  Future<bool> rejectRequest(int maPhieu, int maThuThu) async {
+    final url = Uri.parse('$baseUrl/PhieuMuon/reject/$maPhieu?maThuThuDuyet=$maThuThu');
+    try {
+      final response = await http.post(url);
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Lỗi từ chối: $e");
+      return false;
     }
   }
 }

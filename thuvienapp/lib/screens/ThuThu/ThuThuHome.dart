@@ -62,14 +62,6 @@ class _LibrarianHomeScreenState extends State<LibrarianHomeScreen> {
         ),
         backgroundColor: Colors.blue[800],
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginScreen()));
-            },
-          )
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadStats,

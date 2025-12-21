@@ -18,13 +18,42 @@ import 'Admin/BaoCaoTongHop.dart';
 import 'ThuThu/ThuThuHome.dart';
 
 class TabToi extends StatelessWidget {
-  final User user;
+  final User? user;
   const TabToi({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {
     // Dùng watch để cập nhật khi UserProvider thay đổi
-    final userProvider = context.watch<UserProvider>().user ?? user;
+    final userProvider = context.watch<UserProvider>().user;
+
+    // --- KIỂM TRA NẾU LÀ KHÁCH ---
+    if (userProvider == null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.account_circle_outlined, size: 80, color: Colors.grey),
+              const SizedBox(height: 20),
+              const Text("Bạn đang ở chế độ khách", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              const Text("Vui lòng đăng nhập để xem thông tin cá nhân\nvà sử dụng các chức năng nâng cao.", textAlign: TextAlign.center),
+              const SizedBox(height: 30),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => LoginScreen()),
+                          (route) => false);
+                },
+                child: const Text("Đăng nhập ngay"),
+              )
+            ],
+          ),
+        ),
+      );
+    }
+    // -----------------------------
 
     return Scaffold(
       body: SingleChildScrollView(

@@ -6,10 +6,11 @@ import '../widgets/book_section.dart'; // Widget hiển thị danh sách ngang
 import 'ChatbotScreen.dart'; // Import màn hình Chatbot
 import 'ListSach.dart'; // Import màn hình danh sách sách
 import 'TuongTac.dart'; // Import màn hình tương tác
+import 'login_screen.dart'; // [THÊM] Import màn hình đăng nhập
 
 class TabTruyen extends StatefulWidget {
-  final User user; // Nhận User từ HomeScreen
-  const TabTruyen({super.key, required this.user});
+  final User? user; // Nhận User từ HomeScreen (có thể null)
+  const TabTruyen({super.key, this.user});
 
   @override
   _TabTruyenState createState() => _TabTruyenState();
@@ -25,11 +26,36 @@ class _TabTruyenState extends State<TabTruyen> {
     futureSach = apiService.fetchSaches();
   }
 
+  // [THÊM] Hàm hiển thị popup yêu cầu đăng nhập
+  void _showLoginRequest(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Yêu cầu đăng nhập"),
+        content: const Text("Bạn cần đăng nhập để sử dụng tính năng tương tác."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Hủy"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx); // Đóng popup
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => LoginScreen()),
+              );
+            },
+            child: const Text("Đăng nhập"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Bọc FutureBuilder trong Scaffold để dùng được FloatingActionButton
     return Scaffold(
-      // Phần nội dung chính
       body: FutureBuilder<List<Sach>>(
         future: futureSach,
         builder: (context, snapshot) {
@@ -69,7 +95,8 @@ class _TabTruyenState extends State<TabTruyen> {
                           context,
                           MaterialPageRoute(
                               builder: (_) => BookListScreen(
-                                  title: categories[index], books: booksByCat)));
+                                  title: categories[index],
+                                  books: booksByCat)));
                     },
                   ),
                 ),
@@ -95,7 +122,8 @@ class _TabTruyenState extends State<TabTruyen> {
                           context,
                           MaterialPageRoute(
                               builder: (_) => BookListScreen(
-                                  title: authors[index], books: booksByAuthor)));
+                                  title: authors[index],
+                                  books: booksByAuthor)));
                     },
                   ),
                 ),
@@ -142,10 +170,15 @@ class _TabTruyenState extends State<TabTruyen> {
             }
 
             void showInteraction() {
+              // [SỬA ĐỔI]: Kiểm tra User trước khi vào trang Tương tác
+              if (widget.user == null) {
+                _showLoginRequest(context);
+                return;
+              }
               Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => InteractionScreen(user: widget.user)));
+                      builder: (_) => InteractionScreen(user: widget.user!)));
             }
             // -----------------------------
 
@@ -160,10 +193,11 @@ class _TabTruyenState extends State<TabTruyen> {
                       color: Colors.grey[300],
                       borderRadius: BorderRadius.circular(10),
                       image: DecorationImage(
-                        image: NetworkImage(ApiService.getImageUrl('banner.jpg')),
+                        image: NetworkImage(
+                            ApiService.getImageUrl('banner.jpg')),
                         fit: BoxFit.cover,
                         onError: (exception, stackTrace) {
-                           print("Lỗi tải banner: $exception");
+                          print("Lỗi tải banner: $exception");
                         },
                       ),
                     ),
@@ -191,15 +225,15 @@ class _TabTruyenState extends State<TabTruyen> {
                   BookSection(
                     title: 'KHUYẾN KHÍCH ĐỌC',
                     books: recommendedBooks,
-                    user: widget.user, // Truyền user để mượn sách
+                    user: widget.user, // User null vẫn truyền vào, BookSection -> ChiTietSach sẽ xử lý
                     onSeeMore: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => BookListScreen(
-                                    title: "Sách khuyến khích",
-                                    books: recommendedBooks)));
-                      },
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => BookListScreen(
+                                  title: "Sách khuyến khích",
+                                  books: recommendedBooks)));
+                    },
                   ),
 
                   const SizedBox(height: 24),
@@ -208,17 +242,18 @@ class _TabTruyenState extends State<TabTruyen> {
                   BookSection(
                     title: 'TRUYỆN MỚI CẬP NHẬT',
                     books: latestUpdates,
-                    user: widget.user, // Truyền user để mượn sách
+                    user: widget.user, // User null vẫn truyền vào
                     onSeeMore: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => BookListScreen(
-                                    title: "Mới cập nhật", books: latestUpdates)));
-                      },
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => BookListScreen(
+                                  title: "Mới cập nhật",
+                                  books: latestUpdates)));
+                    },
                   ),
 
-                  const SizedBox(height: 80), // Padding dưới để không bị nút Chat che mất nội dung cuối
+                  const SizedBox(height: 80),
                 ],
               ),
             );
@@ -226,20 +261,21 @@ class _TabTruyenState extends State<TabTruyen> {
         },
       ),
 
-      // 3. Nút Chatbot Trợ lý ảo (Floating Action Button)
+      // 3. Nút Chatbot
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Chuyển sang màn hình Chatbot
+          // Chatbot thường có thể dùng chế độ khách để hỏi thông tin chung
+          // Nếu Chatbot của bạn bắt buộc User, hãy thêm check: if (widget.user == null) ...
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const ChatbotScreen()),
           );
         },
-        backgroundColor: Colors.blueAccent, // Màu nền xanh
-        elevation: 10, // Đổ bóng
-        tooltip: 'Trợ lý ảo AI', // Hiện chữ khi nhấn giữ
+        backgroundColor: Colors.blueAccent,
+        elevation: 10,
+        tooltip: 'Trợ lý ảo AI',
         child: const Icon(
-          Icons.support_agent, // Icon hình người đeo tai nghe
+          Icons.support_agent,
           color: Colors.white,
           size: 30,
         ),
@@ -247,10 +283,11 @@ class _TabTruyenState extends State<TabTruyen> {
     );
   }
 
-  // Widget nút tròn nhỏ (Helper widget)
+  // Widget nút tròn nhỏ
   Widget _buildCategoryButton(IconData icon, String label, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(30), // Hiệu ứng ripple tròn
       child: Column(
         children: [
           CircleAvatar(

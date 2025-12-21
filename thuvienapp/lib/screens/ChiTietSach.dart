@@ -4,6 +4,7 @@ import '../models/sach.dart';
 import '../providers/borrow_cart_provider.dart';
 import '../providers/api_service.dart';
 import '../providers/user_provider.dart';
+import 'login_screen.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final Sach sach;
@@ -188,7 +189,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   }
 
   void _addToCart() {
+    final user = Provider.of<UserProvider>(context, listen: false).user;
     final cart = Provider.of<BorrowCartProvider>(context, listen: false);
+    if (user == null) {
+      _showLoginRequest(); // Hàm hiển thị thông báo yêu cầu đăng nhập
+      return;
+    }
     cart.add(_currentSach, _quantity);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("Đã thêm $_quantity cuốn vào phiếu mượn!"), backgroundColor: Colors.green),
@@ -499,6 +505,27 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         onPressed: onPressed,
         constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
         padding: EdgeInsets.zero,
+      ),
+    );
+  }
+
+  // Thêm hàm thông báo
+  void _showLoginRequest() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Yêu cầu đăng nhập"),
+        content: const Text("Bạn cần đăng nhập để thực hiện chức năng này."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Đóng")),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => LoginScreen()), (route) => false);
+            },
+            child: const Text("Đăng nhập"),
+          )
+        ],
       ),
     );
   }
