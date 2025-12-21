@@ -378,44 +378,51 @@ class ApiService {
     }
   }
 
-// Thêm sách với đầy đủ thông tin
+// Thêm sách mới (gộp cả ảnh và thông tin)
   Future<bool> addSachWithDetails({
     required String tenSach,
     required String theLoai,
     required double giaMuon,
     required int soLuongTon,
     required String moTa,
-    required String hinhAnh,
     required int maTacGia,
     required int maNXB,
+    File? imageFile, // Thêm tham số file ảnh
   }) async {
     final url = Uri.parse('$baseUrl/Sach');
     try {
-      final body = jsonEncode({
-        "Tensach": tenSach,
-        "Matg": maTacGia,
-        "Manxb": maNXB,
-        "Hinhanh": hinhAnh,
-        "Theloai": theLoai,
-        "Mota": moTa,
-        "Giamuon": giaMuon,
-        "Soluongton": soLuongTon,
-        "Trangthai": "Sẵn sàng"
-      });
+      var request = http.MultipartRequest('POST', url);
 
-      print("LOG Gửi thêm sách:  $body");
+      // 1. Gửi các trường thông tin (Key phải trùng khớp với Property trong C# Model Sach)
+      request.fields['Tensach'] = tenSach;
+      request.fields['Matg'] = maTacGia.toString();
+      request.fields['Manxb'] = maNXB.toString();
+      request.fields['Theloai'] = theLoai;
+      request.fields['Mota'] = moTa;
+      request.fields['Giamuon'] = giaMuon.toString();
+      request.fields['Soluongton'] = soLuongTon.toString();
+      request.fields['Trangthai'] = "Có sẵn";
 
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: body,
-      );
+      // 2. Gửi file ảnh (nếu có)
+      if (imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'fileAnh', // QUAN TRỌNG: Tên này phải khớp với tham số 'IFormFile fileAnh' trong Controller
+            imageFile.path,
+          ),
+        );
+      }
 
-      print("LOG Response (${response.statusCode}): ${response.body}");
+      print("LOG: Đang gửi request thêm sách...");
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print("LOG Response code: ${response.statusCode}");
+      print("LOG Response body: ${response.body}");
 
       return response.statusCode == 201 || response.statusCode == 200;
     } catch (e) {
-      print("Lỗi thêm sách:  $e");
+      print("Lỗi kết nối thêm sách: $e");
       return false;
     }
   }

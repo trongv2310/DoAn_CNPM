@@ -33,7 +33,9 @@ public partial class Sach
 
     public virtual ICollection<Chitietthanhly> Chitietthanhlies { get; set; } = new List<Chitietthanhly>();
 
-    public virtual Nhaxuatban ManxbNavigation { get; set; } = null!;
+    [System.Text.Json.Serialization.JsonIgnore] // Thêm dòng này để tránh lỗi vòng lặp JSON khi trả về
+    public virtual Nhaxuatban? ManxbNavigation { get; set; }
 
-    public virtual Tacgium MatgNavigation { get; set; } = null!;
+    [System.Text.Json.Serialization.JsonIgnore]
+    public virtual Tacgium? MatgNavigation { get; set; }
 }

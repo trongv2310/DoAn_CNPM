@@ -131,7 +131,7 @@ class _ThemSachMoiScreenState extends State<ThemSachMoiScreen> {
   }
 
   Future<void> _submit() async {
-    if (! _formKey.currentState!. validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
     if (_selectedTacGia == null || _selectedNXB == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -143,73 +143,31 @@ class _ThemSachMoiScreenState extends State<ThemSachMoiScreen> {
     setState(() => _isLoading = true);
 
     try {
-      String uploadedImageName = ""; // Mặc định rỗng nếu không có ảnh
-
-      // Nếu có ảnh, thử upload
-      if (_selectedImage != null) {
-        var result = await _apiService.uploadImage(_selectedImage! );
-        if (result != null) {
-          uploadedImageName = result;
-        } else {
-          // Nếu upload thất bại, hỏi user có muốn tiếp tục không
-          bool?  continueWithoutImage = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title:  const Text("Upload ảnh thất bại"),
-              content: const Text("Không thể upload ảnh.  Bạn có muốn tiếp tục lưu sách mà không có ảnh?"),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text("Hủy"),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text("Tiếp tục"),
-                ),
-              ],
-            ),
-          );
-
-          if (continueWithoutImage != true) {
-            setState(() => _isLoading = false);
-            return;
-          }
-        }
-      }
-
-      // Lưu sách vào database
+      // Gọi API thêm sách (truyền trực tiếp file ảnh vào)
       bool success = await _apiService.addSachWithDetails(
         tenSach: txtTenSach.text,
         theLoai: txtTheLoai.text,
         giaMuon: double.tryParse(txtGiaMuon.text) ?? 0,
         soLuongTon: int.tryParse(txtSoLuongBanDau.text) ?? 0,
         moTa: txtMoTa.text,
-        hinhAnh: uploadedImageName,
         maTacGia: _selectedTacGia!,
         maNXB: _selectedNXB!,
+        imageFile: _selectedImage, // Truyền file ảnh đã chọn
       );
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Thêm sách thành công! "),
-            backgroundColor: Colors.green,
-          ),
+          const SnackBar(content: Text("Thêm sách thành công!"), backgroundColor: Colors.green),
         );
-        Navigator.pop(context, true);
+        Navigator.pop(context, true); // Quay lại và reload danh sách
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Lỗi khi thêm sách vào database"),
-            backgroundColor: Colors.red,
-          ),
+          const SnackBar(content: Text("Thêm sách thất bại. Kiểm tra log console!"), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
-      print("Lỗi:  $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Lỗi:  $e")),
-      );
+      print("Lỗi: $e");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi: $e")));
     } finally {
       setState(() => _isLoading = false);
     }
