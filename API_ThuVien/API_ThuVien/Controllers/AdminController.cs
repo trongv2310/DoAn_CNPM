@@ -259,28 +259,41 @@ namespace API_ThuVien.Controllers
 
 
         // 2.2 Báo cáo Thủ kho (Thu/Chi tổng quát) - Tái sử dụng logic của ThuKhoController nhưng trả về tổng
-        [HttpGet("report-storekeeper")]
-        public async Task<IActionResult> GetStorekeeperReport()
+        [HttpGet("storekeeper-monthly-stats/{nam}")]
+        public async Task<IActionResult> GetStorekeeperMonthlyStats(int nam)
         {
-            var currentYear = DateTime.Now.Year;
+            // Tái sử dụng logic từ ThuKhoController
+            var chiPhiNhap = await _context.Phieunhaps
+                .Where(p => p.Ngaynhap.Year == nam)
+                .GroupBy(p => p.Ngaynhap.Month)
+                .Select(g => new { Thang = g.Key, TongTien = g.Sum(x => x.Tongtien) })
+                .ToListAsync();
 
-            var tongChi = await _context.Chitietphieunhaps
-                .Include(ct => ct.MapnNavigation)
-                .Where(ct => ct.MapnNavigation.Ngaynhap.Year == currentYear)
-                .SumAsync(ct => (ct.Soluong ?? 0) * ct.Gianhap);
+            var thuNhapThanhLy = await _context.Thanhlies
+                .Where(p => p.Ngaylap.Year == nam)
+                .GroupBy(p => p.Ngaylap.Month)
+                .Select(g => new { Thang = g.Key, TongTien = g.Sum(x => x.Tongtien) })
+                .ToListAsync();
 
-            var tongThu = await _context.Chitietthanhlies
-                .Include(ct => ct.MatlNavigation)
-                .Where(ct => ct.MatlNavigation.Ngaylap.Year == currentYear)
-                .SumAsync(ct => (ct.Soluong) * ct.Dongia);
-
-            return Ok(new
+            var ketQua = new List<object>();
+            for (int i = 1; i <= 12; i++)
             {
-                Nam = currentYear,
-                TongChiNhapSach = tongChi,
-                TongThuThanhLy = tongThu,
-                LoiNhuan = tongThu - tongChi
-            });
+                decimal chi = chiPhiNhap.FirstOrDefault(x => x.Thang == i)?.TongTien ?? 0;
+                decimal thu = thuNhapThanhLy.FirstOrDefault(x => x.Thang == i)?.TongTien ?? 0;
+
+                if (chi > 0 || thu > 0)
+                {
+                    ketQua.Add(new
+                    {
+                        Thang = i,
+                        TongChi = chi,
+                        TongThu = thu,
+                        LoiNhuan = thu - chi
+                    });
+                }
+            }
+
+            return Ok(ketQua);
         }
 
         // 2.3 Thống kê phân bổ thể loại (Biểu đồ tròn)
