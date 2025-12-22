@@ -13,7 +13,7 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
   final ApiService _api = ApiService();
   int _selectedYear = DateTime.now().year;
   late Future<List<dynamic>> _futureMonthlyData;
-  late Future<Map<String, dynamic>> _futureTotalReport;
+  // Đã xóa biến _futureTotalReport vì không còn dùng API này nữa
 
   @override
   void initState() {
@@ -22,20 +22,20 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
   }
 
   void _loadData() {
-    _futureMonthlyData = _api. fetchBaoCaoTaiChinh(_selectedYear);
-    _futureTotalReport = _api.getStorekeeperReport();
+    // Chỉ lấy dữ liệu chi tiết tháng, các số liệu tổng sẽ được tính toán từ đây
+    _futureMonthlyData = _api.fetchBaoCaoTaiChinh(_selectedYear);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:  const Text("Thống kê Thu/Chi"),
-        backgroundColor:  Colors.teal,
-        foregroundColor: Colors. white,
+        title: const Text("Thống kê Thu/Chi"),
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
       ),
       body: RefreshIndicator(
-        onRefresh:  () async {
+        onRefresh: () async {
           setState(() {
             _loadData();
           });
@@ -46,16 +46,16 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Header:  Tổng quan năm ---
+              // --- Header: Tổng quan năm (Đã sửa logic tính toán) ---
               _buildSummaryCard(),
               const SizedBox(height: 24),
 
               // --- Biểu đồ cột Thu/Chi theo tháng ---
               _buildSectionTitle("Biểu đồ Thu/Chi theo tháng ($_selectedYear)"),
-              SizedBox(height:  300, child: _buildBarChart()),
+              SizedBox(height: 300, child: _buildBarChart()),
               const SizedBox(height: 24),
 
-              // --- Biểu đồ tròn:  Tỷ lệ Thu/Chi ---
+              // --- Biểu đồ tròn: Tỷ lệ Thu/Chi ---
               _buildSectionTitle("Tỷ lệ Thu/Chi năm $_selectedYear"),
               SizedBox(height: 250, child: _buildPieChart()),
               const SizedBox(height: 24),
@@ -63,7 +63,7 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
               // --- Chi tiết từng tháng ---
               _buildSectionTitle("Chi tiết từng tháng"),
               _buildMonthlyDetails(),
-              const SizedBox(height:  30),
+              const SizedBox(height: 30),
             ],
           ),
         ),
@@ -76,39 +76,47 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Text(
         title,
-        style: const TextStyle(fontSize:  18, fontWeight: FontWeight.bold, color: Colors. teal),
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
       ),
     );
   }
 
-  // --- Card tổng quan năm ---
+  // --- Card tổng quan năm: Tính tổng từ danh sách tháng ---
   Widget _buildSummaryCard() {
-    return FutureBuilder<Map<String, dynamic>>(
-      future:  _futureTotalReport,
+    return FutureBuilder<List<dynamic>>(
+      future: _futureMonthlyData,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final data = snapshot.data ??  {};
-        final double tongChi = (data['tongChiNhapSach'] ?? 0).toDouble();
-        final double tongThu = (data['tongThuThanhLy'] ?? 0).toDouble();
-        final double loiNhuan = (data['loiNhuan'] ?? 0).toDouble();
+        final list = snapshot.data ?? [];
+
+        // Tính toán thủ công
+        double tongThu = 0;
+        double tongChi = 0;
+
+        for (var item in list) {
+          tongThu += (item['tongThu'] ?? 0).toDouble();
+          tongChi += (item['tongChi'] ?? 0).toDouble();
+        }
+
+        final double loiNhuan = tongThu - tongChi;
 
         return Container(
-          padding:  const EdgeInsets. all(20),
-          decoration:  BoxDecoration(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors:  [Colors.teal. shade700, Colors.teal.shade400],
+              colors: [Colors.teal.shade700, Colors.teal.shade400],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius. circular(16),
-            boxShadow:  [
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
               BoxShadow(
                 color: Colors.teal.withOpacity(0.3),
                 blurRadius: 10,
-                offset:  const Offset(0, 5),
+                offset: const Offset(0, 5),
               ),
             ],
           ),
@@ -116,19 +124,19 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Tổng quan năm ${data['nam'] ?? _selectedYear}",
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight. bold, color: Colors.white),
+                "Tổng quan năm $_selectedYear",
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               const SizedBox(height: 16),
               Row(
-                mainAxisAlignment: MainAxisAlignment. spaceAround,
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildStatColumn("Tổng Thu", tongThu, Colors.greenAccent),
                   _buildStatColumn("Tổng Chi", tongChi, Colors.redAccent),
                   _buildStatColumn(
                     "Lợi nhuận",
                     loiNhuan,
-                    loiNhuan >= 0 ? Colors.lightGreenAccent : Colors. red,
+                    loiNhuan >= 0 ? Colors.lightGreenAccent : Colors.white,
                   ),
                 ],
               ),
@@ -143,10 +151,10 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
     return Column(
       children: [
         Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        const SizedBox(height:  4),
+        const SizedBox(height: 4),
         Text(
           _formatCurrency(value),
-          style: TextStyle(color: color, fontSize:  16, fontWeight: FontWeight.bold),
+          style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ],
     );
@@ -157,7 +165,7 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
     return FutureBuilder<List<dynamic>>(
       future: _futureMonthlyData,
       builder: (context, snapshot) {
-        if (! snapshot.hasData || snapshot.data!.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(child: Text("Không có dữ liệu"));
         }
         final data = snapshot.data!;
@@ -170,7 +178,7 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
           if (thu > maxVal) maxVal = thu;
           if (chi > maxVal) maxVal = chi;
         }
-        maxVal = maxVal > 0 ? maxVal * 1.2 : 100; // Thêm 20% để có khoảng trống
+        maxVal = maxVal > 0 ? maxVal * 1.2 : 1000000;
 
         return BarChart(
           BarChartData(
@@ -182,17 +190,17 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
                 getTooltipItem: (group, groupIndex, rod, rodIndex) {
                   String label = rodIndex == 0 ? "Thu" : "Chi";
                   return BarTooltipItem(
-                    "$label: ${_formatCurrency(rod. toY)}",
+                    "$label: ${_formatCurrency(rod.toY)}",
                     const TextStyle(color: Colors.white, fontSize: 12),
                   );
                 },
               ),
             ),
-            titlesData:  FlTitlesData(
+            titlesData: FlTitlesData(
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
-                  showTitles:  true,
-                  getTitlesWidget:  (value, meta) {
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) {
                     return Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text("T${value.toInt()}", style: const TextStyle(fontSize: 10)),
@@ -202,15 +210,15 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
               ),
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(
-                  showTitles:  true,
-                  reservedSize: 50,
+                  showTitles: true,
+                  reservedSize: 40,
                   getTitlesWidget: (value, meta) {
                     return Text(_formatShortCurrency(value), style: const TextStyle(fontSize: 9));
                   },
                 ),
               ),
-              topTitles:  AxisTitles(sideTitles: SideTitles(showTitles:  false)),
-              rightTitles:  AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             ),
             borderData: FlBorderData(show: false),
             barGroups: data.map((item) {
@@ -222,7 +230,7 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
                 x: thang,
                 barRods: [
                   BarChartRodData(toY: thu, color: Colors.green, width: 12),
-                  BarChartRodData(toY:  chi, color: Colors.red, width: 12),
+                  BarChartRodData(toY: chi, color: Colors.red, width: 12),
                 ],
               );
             }).toList(),
@@ -232,20 +240,25 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
     );
   }
 
-  // --- Biểu đồ tròn ---
+  // --- Biểu đồ tròn: Tính lại tỷ lệ từ dữ liệu tháng ---
   Widget _buildPieChart() {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _futureTotalReport,
+    return FutureBuilder<List<dynamic>>(
+      future: _futureMonthlyData,
       builder: (context, snapshot) {
-        if (! snapshot.hasData) return const Center(child:  CircularProgressIndicator());
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-        final data = snapshot.data! ;
-        final double tongChi = (data['tongChiNhapSach'] ?? 0).toDouble();
-        final double tongThu = (data['tongThuThanhLy'] ?? 0).toDouble();
+        final list = snapshot.data ?? [];
+        double tongThu = 0;
+        double tongChi = 0;
+        for (var item in list) {
+          tongThu += (item['tongThu'] ?? 0).toDouble();
+          tongChi += (item['tongChi'] ?? 0).toDouble();
+        }
+
         final double total = tongChi + tongThu;
 
         if (total == 0) {
-          return const Center(child:  Text("Không có dữ liệu"));
+          return const Center(child: Text("Chưa có dữ liệu tài chính"));
         }
 
         double phanTramThu = (tongThu / total) * 100;
@@ -254,8 +267,8 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
         return Row(
           children: [
             Expanded(
-              flex:  2,
-              child:  PieChart(
+              flex: 2,
+              child: PieChart(
                 PieChartData(
                   sectionsSpace: 2,
                   centerSpaceRadius: 40,
@@ -271,10 +284,10 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
                     ),
                     PieChartSectionData(
                       color: Colors.red,
-                      value:  tongChi,
+                      value: tongChi,
                       title: 'Chi\n${phanTramChi.toStringAsFixed(1)}%',
                       radius: 60,
-                      titlePositionPercentageOffset:  1.4,
+                      titlePositionPercentageOffset: 1.4,
                       titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
                     ),
                   ],
@@ -301,10 +314,10 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
 
   Widget _buildLegendItem(Color color, String label) {
     return Row(
-      children:  [
+      children: [
         Container(width: 16, height: 16, color: color),
         const SizedBox(width: 8),
-        Flexible(child: Text(label, style:  const TextStyle(fontSize: 12))),
+        Flexible(child: Text(label, style: const TextStyle(fontSize: 12))),
       ],
     );
   }
@@ -312,24 +325,27 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
   // --- Chi tiết từng tháng ---
   Widget _buildMonthlyDetails() {
     return FutureBuilder<List<dynamic>>(
-      future:  _futureMonthlyData,
+      future: _futureMonthlyData,
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(child: Text("Không có dữ liệu chi tiết"));
         }
 
-        final list = snapshot.data! ;
+        final list = snapshot.data!;
+        // Sắp xếp tháng giảm dần (tháng mới nhất lên đầu)
+        list.sort((a, b) => (b['thang'] as int).compareTo(a['thang'] as int));
+
         return Column(
           children: list.map((item) {
             final double thu = (item['tongThu'] ?? 0).toDouble();
             final double chi = (item['tongChi'] ?? 0).toDouble();
-            final double loiNhuan = (item['loiNhuan'] ??  0).toDouble();
+            final double loiNhuan = thu - chi;
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius. circular(12)),
-              child:  Padding(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,14 +360,14 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: loiNhuan >= 0 ? Colors.green. withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                            borderRadius:  BorderRadius.circular(20),
+                            color: loiNhuan >= 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          child:  Text(
+                          child: Text(
                             loiNhuan >= 0 ? "+${_formatCurrency(loiNhuan)}" : _formatCurrency(loiNhuan),
-                            style:  TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: loiNhuan >= 0 ? Colors.green : Colors. red,
+                              color: loiNhuan >= 0 ? Colors.green : Colors.red,
                             ),
                           ),
                         ),
@@ -375,25 +391,27 @@ class _BaoCaoThuChiScreenState extends State<BaoCaoThuChiScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style:  const TextStyle(fontSize: 14)),
-        Text(_formatCurrency(value), style: TextStyle(color: color, fontWeight: FontWeight. bold)),
+        Text(label, style: const TextStyle(fontSize: 14)),
+        Text(_formatCurrency(value), style: TextStyle(color: color, fontWeight: FontWeight.bold)),
       ],
     );
   }
 
   String _formatCurrency(double value) {
-    if (value >= 1000000) {
-      return "${(value / 1000000).toStringAsFixed(1)}M đ";
-    } else if (value >= 1000) {
-      return "${(value / 1000).toStringAsFixed(0)}K đ";
+    if (value.abs() >= 1000000000) {
+      return "${(value / 1000000000).toStringAsFixed(1)} tỷ";
+    } else if (value.abs() >= 1000000) {
+      return "${(value / 1000000).toStringAsFixed(1)} tr";
+    } else if (value.abs() >= 1000) {
+      return "${(value / 1000).toStringAsFixed(0)} k";
     }
     return "${value.toStringAsFixed(0)} đ";
   }
 
   String _formatShortCurrency(double value) {
-    if (value >= 1000000) {
+    if (value.abs() >= 1000000) {
       return "${(value / 1000000).toStringAsFixed(0)}M";
-    } else if (value >= 1000) {
+    } else if (value.abs() >= 1000) {
       return "${(value / 1000).toStringAsFixed(0)}K";
     }
     return value.toStringAsFixed(0);
