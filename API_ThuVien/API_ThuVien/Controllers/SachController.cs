@@ -36,7 +36,11 @@ namespace API_ThuVien.Controllers
                     s.Soluongton,
                     s.Theloai, // Lấy thể loại
                     s.Mota,
-                    TenTacGia = s.MatgNavigation.Tentg // Lấy tên tác giả
+                    s.Matg,
+                    s.Manxb,
+                    s.Trangthai,
+                    TenTacGia = s.MatgNavigation.Tentg, // Lấy tên tác giả
+                    TenNxb = s.ManxbNavigation.Tennxb
                 })
                 .ToListAsync();
 
@@ -58,31 +62,60 @@ namespace API_ThuVien.Controllers
         }
 
         // PUT: api/Sach/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutSach(int id, Sach sach)
+        public async Task<IActionResult> PutSach(int id, [FromForm] Sach sachInput, IFormFile? fileAnh)
         {
-            if (id != sach.Masach)
+            // 1. Lấy sách cũ từ Database lên (Biến này ĐANG ĐƯỢC TRACKING)
+            var existingSach = await _context.Saches.FindAsync(id);
+
+            if (existingSach == null)
             {
-                return BadRequest();
+                return NotFound();
             }
 
-            _context.Entry(sach).State = EntityState.Modified;
+            // 2. Cập nhật thủ công các trường dữ liệu từ Client gửi lên vào sách cũ
+            // (Làm cách này để tránh lỗi "Tracking" của Entity Framework)
+            existingSach.Tensach = sachInput.Tensach;
+            existingSach.Matg = sachInput.Matg;
+            existingSach.Manxb = sachInput.Manxb;
+            existingSach.Theloai = sachInput.Theloai;
+            existingSach.Mota = sachInput.Mota;
+            existingSach.Giamuon = sachInput.Giamuon;
+            existingSach.Soluongton = sachInput.Soluongton;
 
+            // Lưu ý: Nếu có trường TrangThai thì cập nhật luôn, ví dụ:
+            // existingSach.Trangthai = sachInput.Trangthai;
+
+            // 3. Xử lý file ảnh (Nếu có ảnh mới gửi lên)
+            if (fileAnh != null && fileAnh.Length > 0)
+            {
+                // Tạo tên file mới
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(fileAnh.FileName)}";
+                var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "images");
+
+                if (!Directory.Exists(uploadPath)) Directory.CreateDirectory(uploadPath);
+
+                var filePath = Path.Combine(uploadPath, fileName);
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await fileAnh.CopyToAsync(stream);
+                }
+
+                // Cập nhật tên ảnh vào sách cũ
+                existingSach.Hinhanh = fileName;
+            }
+            // Nếu không gửi ảnh mới thì giữ nguyên ảnh cũ (không làm gì cả)
+
+            // 4. Lưu thay đổi
             try
             {
+                // Vì existingSach đã được track từ FindAsync, chỉ cần gọi SaveChanges
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!SachExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                if (!SachExists(id)) return NotFound();
+                else throw;
             }
 
             return NoContent();

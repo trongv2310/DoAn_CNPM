@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/sach.dart';
 import '../../providers/api_service.dart';
 import 'ThemSachMoi.dart';
+import 'CapNhatSach.dart';
 
 class InventoryCheckScreen extends StatefulWidget {
   const InventoryCheckScreen({Key? key}) : super(key: key);
@@ -92,6 +93,9 @@ class _InventoryCheckScreenState extends State<InventoryCheckScreen> {
                 moTa: txtMoTa.text,
                 hinhanh: book.hinhanh,
                 theLoai: book.theLoai,
+                  matg: book.matg,
+                  manxb: book.manxb,
+                trangThai: book.trangThai,
               );
 
               bool success = await _apiService.updateSach(updatedBook);
@@ -154,7 +158,13 @@ class _InventoryCheckScreenState extends State<InventoryCheckScreen> {
 
                   // Bọc Card bằng InkWell để bắt sự kiện Tap vào toàn bộ thẻ
                   return InkWell(
-                    onTap: () => _showEditDialog(book), // Nhấn vào thẻ để sửa
+                    onTap: () async {
+                      final bool? result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => CapNhatSachScreen(sach: book)),
+                      );
+                      if (result == true) _loadBooks();
+                    },
                     child: Card(
                       elevation: 2,
                       margin: const EdgeInsets.only(bottom: 12),
@@ -258,9 +268,21 @@ class _InventoryCheckScreenState extends State<InventoryCheckScreen> {
                             top: 0,
                             right: 0,
                             child: IconButton(
-                              icon: const Icon(Icons.edit,
-                                  size: 20, color: Colors.blue),
-                              onPressed: () => _showEditDialog(book),
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () async {
+                                // Navigate to the new full update screen
+                                final bool? result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => CapNhatSachScreen(sach: book), // Pass the current book object
+                                  ),
+                                );
+
+                                // Reload list if update was successful
+                                if (result == true) {
+                                  _loadBooks();// Call your function to refresh the book list
+                                }
+                              },
                             ),
                           ),
                         ],
