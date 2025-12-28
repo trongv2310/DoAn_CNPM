@@ -95,8 +95,8 @@ Hệ thống được phân quyền chặt chẽ cho 4 đối tượng người 
 3.  Nhấn **F5** hoặc nút **Run** để khởi chạy Server. (Mặc định API chạy tại `http://localhost:5xxx`).
 
 ### Bước 3: Chạy Mobile App
-1.  Mở thư mục `thuvienapp` bằng VS Code.
-2.  Mở file cấu hình API (thường là `lib/providers/api_service.dart` hoặc `lib/utils/constants.dart`) và cập nhật địa chỉ IP:
+1.  Mở thư mục `thuvienapp` bằng Android Studio.
+2.  Mở file cấu hình API (thường là `lib/providers/api_service.dart`) và cập nhật địa chỉ IP:
     ```dart
     // Thay localhost bằng IP LAN của máy tính nếu chạy trên điện thoại thật
     const String baseUrl = "[http://192.168.](http://192.168.)x.x:5xxx/api"; 
