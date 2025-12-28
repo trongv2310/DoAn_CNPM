@@ -68,7 +68,6 @@ Hệ thống được phân quyền chặt chẽ cho 4 đối tượng người 
 | :---: | :---: | :---: |
 | <img src="images/hp1.jpg" width="200"> | <img src="images/ts.jpg" width="200"> | <img src="images/alc.jpg" width="200"> |
 
-*(Lưu ý: Hình ảnh minh họa được lấy từ thư mục `images/` của dự án)*
 
 ---
 
