@@ -8,7 +8,9 @@ class Sach {
   final String? tenTacGia;
   final String? moTa;
   final String? tennxb;
-
+  final int matg;
+  final int manxb;
+  final String trangThai;
 
   Sach({
     required this.masach,
@@ -19,7 +21,10 @@ class Sach {
     this.theLoai,
     this.tenTacGia,
     this.moTa,
-    this.tennxb
+    this.tennxb,
+    required this.matg,
+    required this.manxb,
+    required this.trangThai,
   });
 
   factory Sach.fromJson(Map<String, dynamic> json) {
@@ -33,6 +38,10 @@ class Sach {
       theLoai: json['theloai'] ?? "Khác",
       tenTacGia: json['tenTacGia'] ?? "Chưa rõ",
       moTa: json['mota'] ?? "",
+      matg: json['matg'] ?? json['Matg'] ?? 0,
+      manxb: json['manxb'] ?? json['Manxb'] ?? 0,
+      trangThai: json['trangthai'] ?? json['Trangthai'] ?? "Có sẵn",
+      tennxb: json['tenNxb'] ?? json['TenNxb'] ?? "Đang cập nhật",
     );
   }
 }

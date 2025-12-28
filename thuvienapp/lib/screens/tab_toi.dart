@@ -117,7 +117,7 @@ class TabToi extends StatelessWidget {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => ImportHistoryScreen(user: userProvider)));
               }),
               _buildMenuItem(context, Icons.bar_chart, "Báo cáo thu/chi", () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportScreen()));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const BaoCaoThuChiScreen()));
               }),
               Divider(thickness: 5, color: Colors.grey[100]),
             ],

@@ -104,30 +104,67 @@ class ApiService {
   Future<bool> updateSach(Sach sach) async {
     final url = Uri.parse('$baseUrl/Sach/${sach.masach}');
     try {
-      final body = jsonEncode({
-        "Masach": sach.masach, // Quan trọng: Phải gửi kèm ID
+      // Gọi lại hàm updateSachFull nhưng không gửi ảnh
+      Map<String, String> data = {
+        "Masach": sach.masach.toString(),
         "Tensach": sach.tensach,
-        "Matg": 1, // Giữ nguyên hoặc update nếu có UI
-        "Manxb": 1,
-        "Hinhanh": sach.hinhanh,
-        "Theloai": sach.theLoai,
-        "Mota": sach.moTa,
-        "Giamuon": sach.giamuon,
-        "Soluongton": sach.soluongton,
-        "Trangthai": "Sẵn sàng"
-      });
+        "Matg": sach.matg.toString(),
+        "Manxb": sach.manxb.toString(),
+        "Theloai": sach.theLoai ?? "",
+        "Mota": sach.moTa ?? "",
+        "Giamuon": sach.giamuon.toString(),
+        "Soluongton": sach.soluongton.toString(),
+        "Trangthai": "Có sẵn"
+      };
 
-      final response = await http.put(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: body,
-      );
-      return response.statusCode == 204 || response.statusCode == 200;
+      // Tái sử dụng logic của updateSachFull để tránh viết code lặp
+      return await updateSachFull(sach.masach, data, null);
     } catch (e) {
-      print("Lỗi update sách: $e");
+      print("Lỗi update sách (cũ): $e");
       return false;
     }
   }
+
+  // 2. Hàm Update Mới (Dùng cho màn hình CapNhatSach - Có ảnh)
+  Future<bool> updateSachFull(int id, Map<String, String> data, File? imageFile) async {
+    final url = Uri.parse('$baseUrl/Sach/$id');
+    try {
+      var request = http.MultipartRequest('PUT', url);
+
+      // Thêm toàn bộ dữ liệu từ Map vào request fields
+      request.fields.addAll(data);
+
+      // (Tùy chọn) Kiểm tra lại lần cuối để chắc chắn không bị thiếu field Trangthai
+      if (!request.fields.containsKey('Trangthai')) {
+        request.fields['Trangthai'] = 'Có sẵn';
+      }
+
+      // Thêm file ảnh nếu có
+      if (imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'fileAnh',
+            imageFile.path,
+          ),
+        );
+      }
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        return true;
+      } else {
+        print("Update thất bại: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("Lỗi kết nối update sách: $e");
+      return false;
+    }
+  }
+
+
   Future<bool> doiMatKhau(int maTaiKhoan, String matKhauCu, String matKhauMoi) async {
     final url = Uri.parse('$baseUrl/Auth/doi-mat-khau');
     try {
@@ -920,3 +957,6 @@ class ApiService {
     }
   }
 }
+
+
+
